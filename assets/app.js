@@ -2691,6 +2691,7 @@
         <label class="campo"><span>Aparência do convite</span><select data-evc="convite.modelo">
           <option value="" ${cv.modelo !== 'html' ? 'selected' : ''}>Modelo pronto (escolho as cores)</option>
           <option value="html" ${cv.modelo === 'html' ? 'selected' : ''}>Meu próprio HTML (design livre)</option></select></label>
+        <label class="chk"><input type="checkbox" data-evc="convite.envelope" data-tipo="bool" ${cv.envelope !== false ? 'checked' : ''}>Abrir com envelope animado: o convidado toca no selo de sol e o convite sai do envelope</label>
         ${cv.modelo === 'html' ? `<div class="modelo-html">
           <p class="ajuda">Cole aqui o HTML do convite com o seu design. Onde quiser os dados do evento, escreva os campos entre chaves duplas:
             <code>{{titulo}}</code> <code>{{ola}}</code> <code>{{data}}</code> <code>{{dia}}</code> <code>{{mes}}</code> <code>{{horario}}</code> <code>{{local}}</code> <code>{{endereco}}</code> <code>{{tema}}</code> <code>{{mensagem}}</code> <code>{{prazo}}</code> <code>{{faltam}}</code>.

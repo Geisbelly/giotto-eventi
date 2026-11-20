@@ -610,7 +610,7 @@
       .pr-nome { min-width: 0; }
       .pr-acoes { display: flex; align-items: center; gap: 8px; flex: none; }
       .pr-meu { color: var(--cor-escura, #8a5a12) !important; font-weight: 700; }
-      .pr-btn { flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--cor, #b4781f); color: #fff; font: 600 .88rem/1 inherit; font-family: inherit; cursor: pointer; }
+      .pr-btn { flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--cor, #b4781f); color: #fff; font-size: .88rem; font-weight: 600; line-height: 1; font-family: inherit; cursor: pointer; }
       .pr-btn.sec { background: transparent; color: var(--cor-escura, #8a5a12); border: 1.5px solid var(--linha, #e6ddd0); }
       .pr-btn:disabled { opacity: .6; cursor: wait; }
       .pr-btn:focus-visible { outline: 3px solid var(--cor, #b4781f); outline-offset: 2px; }
@@ -825,6 +825,155 @@
       render(ev);
     }
 
+    // Abertura: o convite chega num envelope lacrado com um selo de sol. O convidado toca no selo,
+    // o lacre parte, a aba abre e o cartão sai do envelope. Usa as cores e a fonte do próprio convite.
+    function abrirEnvelope(ev, vals) {
+      const cv = ev.convite || {};
+      const chave = `giotto.envelope.${evId}`;
+      let visto = false;
+      try { visto = sessionStorage.getItem(chave) === '1'; } catch { /* sem armazenamento */ }
+      if (cv.envelope === false || visto || location.hash.length > 1 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const b = getComputedStyle(document.body);
+      const v = (n, p) => (b.getPropertyValue(n) || '').trim() || p;
+      const ap = aparenciaConvite();
+      const cor = v('--cor', '#b4781f'), escura = v('--cor-escura', '#8a5a12'), fundo = v('--cor-fundo', '#f7ecd9');
+      const tit = ap.titulo || "'Fraunces', Georgia, serif";
+      const host = document.createElement('div');
+      host.setAttribute('style', 'position:fixed;inset:0;z-index:2147483000;');
+      const sr = host.attachShadow({ mode: 'open' });
+      const raio = (i, n, r1, r2, w) => { const a = (i / n) * Math.PI * 2; return `<line x1="${(50 + Math.cos(a) * r1).toFixed(2)}" y1="${(50 + Math.sin(a) * r1).toFixed(2)}" x2="${(50 + Math.cos(a) * r2).toFixed(2)}" y2="${(50 + Math.sin(a) * r2).toFixed(2)}" stroke-width="${w}"/>`; };
+      const sol = `<g fill="none" stroke-linecap="round">
+          <circle cx="50" cy="50" r="11"/>${Array.from({ length: 16 }, (_, i) => raio(i, 16, 16, i % 2 ? 22 : 27, i % 2 ? 2.2 : 2.8)).join('')}
+        </g>`;
+      // Cera com borda irregular, brilho e o sol em relevo (luz em cima, sombra embaixo).
+      const selo = `<svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs><radialGradient id="cera" cx="38%" cy="32%" r="75%"><stop offset="0" style="stop-color: color-mix(in srgb, ${cor} 70%, white)"/>
+            <stop offset=".55" stop-color="${cor}"/><stop offset="1" stop-color="${escura}"/></radialGradient></defs>
+          <path fill="url(#cera)" d="M50 3c6 0 8 4 13 5s10-2 14 2 1 9 4 13 9 5 10 11-4 8-4 13 6 9 3 15-9 4-12 8-1 11-7 14-9-2-14-1-8 6-14 4-5-8-10-11-11-1-14-6 3-9 1-14-8-7-6-13 8-6 9-11-3-11 2-15 10 0 14-3S44 3 50 3z"/>
+          <circle cx="50" cy="50" r="33" fill="none" stroke="${escura}" stroke-opacity=".45" stroke-width="2"/>
+          <circle cx="50" cy="50" r="30" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="1"/>
+          <g stroke="${escura}" stroke-opacity=".6" transform="translate(0.8 1.2)">${sol}</g>
+          <g stroke="#fff" stroke-opacity=".55">${sol}</g>
+          <ellipse cx="34" cy="24" rx="12" ry="6" fill="#fff" opacity=".22" transform="rotate(-25 34 24)"/>
+        </svg>`;
+      const para = vals.convidado ? `Para <b>${esc(vals.convidado)}</b>` : esc(vals.titulo);
+      sr.innerHTML = `<style>
+        :host { all: initial; }
+        * { box-sizing: border-box; }
+        .cena { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+          padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); font: 16px/1.4 ${b.fontFamily || 'system-ui, sans-serif'}; color: ${escura};
+          background-color: ${ap.cor && !/rgba\(.*,\s*0\)$/.test(ap.cor) ? ap.cor : fundo}; background-image: ${ap.imagem || 'none'}; background-size: ${ap.tamanho || 'auto'};
+          transition: opacity .7s ease; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        .cena::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(60,40,20,.10)); pointer-events: none; }
+        .env { --w: min(86vw, 380px); position: relative; width: var(--w); height: calc(var(--w) * .66); perspective: 1200px; cursor: pointer;
+          animation: chega .8s cubic-bezier(.2,.8,.2,1) both; filter: drop-shadow(0 22px 28px rgba(60,40,20,.22)); transition: transform .8s cubic-bezier(.5,0,.2,1), opacity .7s ease; }
+        .env:focus-visible { outline: none; }
+        .env:focus-visible .selo { outline: 3px solid ${cor}; outline-offset: 4px; }
+        @keyframes chega { from { opacity: 0; transform: translateY(40px) rotate(-3deg); } to { opacity: 1; transform: none; } }
+        .costas { position: absolute; inset: 0; border-radius: 8px; background: color-mix(in srgb, ${fundo} 62%, ${cor} 38%); }
+        .carta { position: absolute; left: 6%; right: 6%; top: 5%; height: 92%; border-radius: 6px; background: ${ap.cartao || '#fffdf9'};
+          box-shadow: 0 1px 2px rgba(60,40,20,.12), 0 -8px 24px -12px rgba(60,40,20,.25); display: flex; flex-direction: column; align-items: center;
+          justify-content: flex-start; text-align: center; padding: 9% 8% 0; gap: 4px; transition: transform .95s cubic-bezier(.2,.8,.2,1); }
+        .carta::before { content: ''; position: absolute; inset: 7px; border: 1px solid color-mix(in srgb, ${cor} 45%, transparent); border-radius: 3px; pointer-events: none; }
+        .carta svg { width: 30px; height: 30px; stroke: ${cor}; }
+        .carta small { font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, ${escura} 75%, transparent); }
+        .carta strong { font-family: ${tit}; font-weight: 600; font-size: clamp(1.05rem, 5.2vw, 1.45rem); line-height: 1.15; color: ${escura}; max-width: 100%; overflow-wrap: anywhere; }
+        .carta span { font-size: .8rem; color: color-mix(in srgb, ${escura} 80%, transparent); }
+        .bolso { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .bolso .lado { fill: color-mix(in srgb, ${fundo} 88%, white); }
+        .bolso .baixo { fill: color-mix(in srgb, ${fundo} 90%, ${cor} 10%); }
+        .bolso .vinco { fill: none; stroke: color-mix(in srgb, ${cor} 40%, transparent); stroke-width: .3; }
+        .bolso .borda { fill: none; stroke: color-mix(in srgb, ${cor} 45%, transparent); stroke-width: .25; stroke-dasharray: 1.2 .9; }
+        .bolso .sombra { fill: rgba(60,40,20,.18); filter: blur(1.2px); transition: opacity .3s; }
+        .aberta .bolso .sombra { opacity: 0; }
+        .para { position: absolute; left: 0; right: 0; bottom: 7%; margin: 0; text-align: center; font-family: ${tit}; font-style: italic; font-size: clamp(.95rem, 4.4vw, 1.15rem);
+          color: ${escura}; padding: 0 18%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .4s; }
+        .para b { font-weight: 600; font-style: normal; }
+        .aba { position: absolute; left: 0; right: 0; top: 0; height: 60%; transform-origin: 50% 0; transform-style: preserve-3d;
+          transition: transform .75s cubic-bezier(.45,0,.2,1); z-index: 4; }
+        .aba i { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .aba i svg { width: 100%; height: 100%; display: block; overflow: visible; }
+        .aba i + i { transform: rotateX(180deg); }
+        .selo { position: absolute; left: 50%; top: 60%; width: calc(var(--w) * .24); aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 6;
+          border: 0; padding: 0; background: none; cursor: pointer; border-radius: 50%; }
+        .selo .metade { position: absolute; inset: 0; transition: transform .6s cubic-bezier(.3,.6,.4,1), opacity .5s ease .1s; filter: drop-shadow(0 3px 4px rgba(60,40,20,.35)); }
+        .selo .metade:first-child { clip-path: polygon(0 0, 55% 0, 45% 40%, 56% 62%, 47% 100%, 0 100%); }
+        .selo .metade:last-child { clip-path: polygon(55% 0, 100% 0, 100% 100%, 47% 100%, 56% 62%, 45% 40%); }
+        .selo svg { width: 100%; height: 100%; display: block; }
+        .selo::after { content: ''; position: absolute; inset: -10px; border-radius: 50%; box-shadow: 0 0 0 0 color-mix(in srgb, ${cor} 45%, transparent);
+          animation: pulso 2.2s ease-out 1s infinite; pointer-events: none; }
+        @keyframes pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, ${cor} 40%, transparent); } 100% { box-shadow: 0 0 0 22px transparent; } }
+        .dica { margin: 0; font-size: .95rem; letter-spacing: .02em; color: ${escura}; opacity: 0; animation: aparece .6s ease 1.2s forwards; text-align: center; }
+        @keyframes aparece { to { opacity: .85; } }
+        .pular { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; border: 0; background: rgba(255,255,255,.55); color: ${escura};
+          font-size: .85rem; font-weight: 500; line-height: 1; font-family: inherit; padding: 10px 14px; border-radius: 999px; cursor: pointer; backdrop-filter: blur(4px); }
+        /* Abrindo */
+        .abrindo .selo { pointer-events: none; outline: none !important; }
+        .costas { z-index: 0; } .carta { z-index: 2; } .bolso, .para { z-index: 3; }
+        .abrindo .selo::after { animation: none; }
+        .abrindo .selo .metade:first-child { transform: translate(-38%, 120%) rotate(-38deg); opacity: 0; }
+        .abrindo .selo .metade:last-child { transform: translate(38%, 130%) rotate(34deg); opacity: 0; }
+        .abrindo .dica, .abrindo .pular { opacity: 0 !important; transition: opacity .3s; animation: none; }
+        .aberta .aba { transform: rotateX(180deg); }
+        .atras .aba { z-index: 1; }
+        .sai .carta { transform: translateY(-62%); }
+        .sai .para { opacity: 0; }
+        .revela .env { transform: translateY(18vh) scale(1.08); opacity: 0; }
+        .revela { opacity: 0; pointer-events: none; }
+        @media (max-height: 520px) { .env { --w: min(70vw, 300px); } .cena { gap: 14px; } }
+      </style>
+      <div class="cena" role="dialog" aria-modal="true" aria-label="Convite fechado no envelope">
+        <button type="button" class="pular">Pular</button>
+        <div class="env" tabindex="0" role="button" aria-label="Abrir o convite">
+          <div class="costas"></div>
+          <div class="carta" aria-hidden="true">${estrela}<small>Você está convidado</small><strong>${esc(vals.titulo)}</strong>${vals.quando ? `<span>${esc(vals.quando)}</span>` : ''}</div>
+          <svg class="bolso" viewBox="0 0 100 66" preserveAspectRatio="none" aria-hidden="true">
+            <path class="lado" d="M0 0 L50 39 L0 66 Z"/><path class="lado" d="M100 0 L50 39 L100 66 Z"/>
+            <path class="baixo" d="M0 66 L50 33 L100 66 Z"/><path class="vinco" d="M0 66 L50 33 L100 66"/>
+            <path class="sombra" d="M1 0 L50 41.5 L99 0 Z"/>
+            <path class="borda" d="M2 3 V62.5 Q2 64 3.5 64 H96.5 Q98 64 98 62.5 V3"/>
+          </svg>
+          <p class="para">${para}</p>
+          <div class="aba" aria-hidden="true">
+            <i><svg viewBox="0 0 100 40" preserveAspectRatio="none"><defs><linearGradient id="g-aba" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: color-mix(in srgb, ${fundo} 80%, white)"/><stop offset="1" style="stop-color: color-mix(in srgb, ${fundo} 92%, ${cor} 8%)"/></linearGradient></defs>
+              <path d="M0 0 H100 L53 38.6 Q50 40.6 47 38.6 Z" fill="url(#g-aba)" stroke-width=".3" style="stroke: color-mix(in srgb, ${cor} 35%, transparent)"/>
+              <path d="M4 1.6 H96 L51.6 37.4 Q50 38.6 48.4 37.4 Z" fill="none" style="stroke: color-mix(in srgb, ${cor} 45%, transparent)" stroke-width=".25" stroke-dasharray="1.2 .9"/></svg></i>
+            <i><svg viewBox="0 0 100 40" preserveAspectRatio="none"><path d="M0 40 H100 L53 1.4 Q50 -0.6 47 1.4 Z" style="fill: color-mix(in srgb, ${fundo} 70%, ${cor} 30%)"/></svg></i>
+          </div>
+          <span class="selo"><span class="metade">${selo}</span><span class="metade">${selo}</span></span>
+        </div>
+        <p class="dica">Toque no selo para abrir</p>
+      </div>`;
+      const cena = sr.querySelector('.cena'), env = sr.querySelector('.env');
+      const ovf = document.documentElement.style.overflow;
+      document.documentElement.style.overflow = 'hidden';
+      document.body.appendChild(host);
+      setTimeout(() => env.focus({ preventScroll: true }), 50);
+      const marcar = () => { try { sessionStorage.setItem(chave, '1'); } catch { /* sem armazenamento */ } };
+      let feito = false;
+      const fim = () => {
+        if (!host.isConnected) return;
+        host.remove();
+        document.documentElement.style.overflow = ovf;
+        removeEventListener('keydown', tecla);
+      };
+      const passo = (cls, ms) => setTimeout(() => cena.classList.add(cls), ms);
+      const abrir = () => {
+        if (feito) return;
+        feito = true; marcar();
+        scrollTo(0, 0);
+        cena.classList.add('abrindo');
+        passo('aberta', 300); passo('atras', 680); passo('sai', 900); passo('revela', 2050);
+        setTimeout(fim, 2800);
+      };
+      const pular = () => { feito = true; marcar(); cena.classList.add('revela'); setTimeout(fim, 700); };
+      const tecla = (e) => { if (e.key === 'Escape') pular(); else if ((e.key === 'Enter' || e.key === ' ') && !feito) { e.preventDefault(); abrir(); } };
+      env.addEventListener('click', abrir);
+      sr.querySelector('.pular').addEventListener('click', (e) => { e.stopPropagation(); pular(); });
+      addEventListener('keydown', tecla);
+    }
+
     function render(ev) {
       const cv = ev.convite || {};
       const convidado = (ev.convidados || []).find((c) => c && c.id === convId) || null;
@@ -903,6 +1052,7 @@
       ligarContagem(ev);
       ligarBarra(encerrado, prazoTxt);
       atualizarCta();
+      abrirEnvelope(ev, VALS);
     }
 
     function formRsvp(ev, ctx) {
