@@ -2676,7 +2676,7 @@
         </div>
       </details>
       <details class="conv-cfg" ${ev.presentes.length || cv.presente_dica ? 'open' : ''}><summary>Presentes ${presentesResumo(ev)}</summary>
-        <label class="campo"><span>Dica de presente (aparece no convite)</span><textarea data-evc="convite.presente_dica" rows="2" maxlength="500" placeholder="ex.: Fralda tamanho G, roupa tamanho 1 ano ou sapatinho número 20">${esc(cv.presente_dica || '')}</textarea></label>
+        <label class="campo"><span>Dica de presente (uma por linha; aparece no convite)</span><textarea data-evc="convite.presente_dica" rows="5" maxlength="500" placeholder="Guia de tamanhos:&#10;Roupa M ou G&#10;Sapato 19 para cima&#10;Fralda G ou GG">${esc(cv.presente_dica || '')}</textarea></label>
         <p class="ajuda">Lista de presentes (opcional): o convidado pode reservar um item ao confirmar, e o item reservado some para os outros.</p>
         <div class="linhas-ev">${ev.presentes.map((g, i) => {
           const quem = reservaDe(ev, g.id);

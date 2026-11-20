@@ -110,6 +110,10 @@
     .presentes li.reservado small { text-decoration: none; }
     .presentes a { color: var(--cor-escura); }
     .presentes .nota { font-size: .82rem; color: var(--suave); }
+    .presentes .dica-tit { margin: 10px auto 6px; max-width: 360px; text-align: left; font-weight: 600; }
+    .presentes ul.dica { display: flex; flex-direction: column; gap: 8px; margin: 0 auto 14px; }
+    .presentes ul.dica li { justify-content: flex-start; align-items: flex-start; gap: 10px; padding: 10px 14px; border: 1px solid var(--linha); border-radius: 12px; background: var(--cor-fundo); line-height: 1.45; overflow-wrap: anywhere; }
+    .presentes ul.dica li::before { content: ''; flex: none; width: 8px; height: 8px; margin-top: .5em; border-radius: 50%; background: var(--cor); }
     @media print { .agenda { display: none; } }
     .imprimir-rsvp { display: none; text-align: center; padding: 0 24px 24px; color: var(--suave); font-size: .9rem; }
   </style>
@@ -173,12 +177,25 @@
       a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
       a.download = 'convite.ics'; document.body.appendChild(a); a.click(); a.remove();
     }
+    // Dica de presente: um item por linha (ou separados por " - "); linha que termina em ":" vira subtítulo.
+    function dicaHtml(t) {
+      const partes = String(t || '').split('\n').flatMap((l) => l.split(/\s+[-–•]\s+/))
+        .map((x) => x.replace(/^\s*[-–•*]\s*/, '').trim()).filter(Boolean);
+      if (!partes.length) return '';
+      let html = '', itens = [];
+      const fecha = () => { if (itens.length) html += `<ul class="dica">${itens.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`; itens = []; };
+      for (const x of partes) {
+        if (/:$/.test(x)) { fecha(); html += `<p class="dica-tit">${esc(x.replace(/:$/, ''))}</p>`; } else itens.push(x);
+      }
+      fecha();
+      return html;
+    }
     function presentesHtml(ev, minha) {
       const cv = ev.convite || {};
       const lista = (ev.presentes || []).filter((g) => g && g.nome);
       if (!cv.presente_dica && !lista.length) return '';
       return `<div class="presentes"><h2>Sugestão de presente</h2>
-        ${cv.presente_dica ? `<p>${esc(cv.presente_dica)}</p>` : ''}
+        ${dicaHtml(cv.presente_dica)}
         ${lista.length ? `<ul>${lista.map((g) => {
           const r = reservas.find((x) => x.presente === g.id);
           const meu = minha && r && r.id === minha;
