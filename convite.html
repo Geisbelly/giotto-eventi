@@ -48,6 +48,7 @@
     .rsvp { border-top: 1px dashed var(--linha); padding: 26px 24px 28px; }
     .rsvp h2 { font-family: var(--titulo); font-weight: 650; font-size: 1.45rem; margin: 0 0 4px; text-align: center; }
     .rsvp .sub { text-align: center; color: var(--suave); margin: 0 0 18px; font-size: .92rem; }
+    .rsvp .pres-escolhido { margin-top: -8px; padding: 10px 14px; border-radius: 12px; background: var(--cor-fundo, #f7ecd9); color: var(--cor-escura, #8a5a12); }
     .campo { display: block; margin-bottom: 14px; }
     .campo > span { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 5px; }
     input, select, textarea { width: 100%; font: inherit; color: inherit; background: #fff; border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; min-height: 44px; }
@@ -229,17 +230,27 @@
       const lista = (ev.presentes || []).filter((g) => g && g.nome);
       if (!String(cv.presente_dica || '').trim() && !lista.length) return '';
       const dica = String(cv.presente_dica || '').trim() ? conteudoPagina({ formato: 'lista', texto: String(cv.presente_dica).split('\n').flatMap((l) => l.split(/\s+[-–•]\s+/)).join('\n') }) : '';
+      const reg = lsGet();
       const ja = respondeu();
+      const naoVai = ja && reg.resposta === 'nao';
+      const pode = !(CTX && CTX.encerrado) && !naoVai;
+      const tenho = lista.some((g) => reservas.some((x) => x.presente === g.id && x.id === minha));
       return `${dica}
         ${lista.length ? `<h2 class="pg-sub">${dica ? 'Lista para reservar' : 'Escolha um presente'}</h2>
         <ul class="pg-presentes">${lista.map((g) => {
           const r = reservas.find((x) => x.presente === g.id);
           const meu = minha && r && r.id === minha;
-          return `<li class="${r && !meu ? 'reservado' : ''}"><span>${urlOk(g.link) ? `<a href="${esc(g.link)}" target="_blank" rel="noopener">${esc(g.nome)}</a>` : esc(g.nome)}</span>
-            <small>${meu ? 'Você reservou' : r ? 'Já reservado' : 'Disponível'}</small></li>`;
+          const escolhido = !ja && !r && reg && reg.presente === g.id;
+          const acao = escolhido && pode ? '<small class="pr-meu">Escolhido</small>' : !pode ? `<small>${meu ? 'Você reservou' : r ? 'Já reservado' : 'Disponível'}</small>`
+            : meu ? `<span class="pr-acoes"><small class="pr-meu">Você reservou</small><button type="button" class="pr-btn sec" data-desistir="${esc(g.id)}">Desistir</button></span>`
+              : r ? '<small>Já reservado</small>'
+                : `<button type="button" class="pr-btn" data-reservar="${esc(g.id)}">${tenho ? 'Trocar por este' : 'Reservar'}</button>`;
+          return `<li class="${r && !meu ? 'reservado' : ''} ${meu || escolhido ? 'meu' : ''}"><span class="pr-nome">${urlOk(g.link) ? `<a href="${esc(g.link)}" target="_blank" rel="noopener">${esc(g.nome)}</a>` : esc(g.nome)}</span>${acao}</li>`;
         }).join('')}</ul>
-        <p class="pg-nota">Para reservar, escolha o presente na confirmação de presença.</p>
-        ${ja ? '' : '<a class="volta-fim pg-cta" href="#rsvp" data-ir-confirmar>Confirmar presença e reservar</a>'}` : ''}`;
+        <p class="pg-nota" data-pr-msg role="status">${naoVai ? 'Para reservar um presente, mude sua resposta para “Vou sim” ou “Talvez”.'
+          : CTX && CTX.encerrado ? '' : ja ? 'Toque em Reservar para separar um presente para você. Cada presente fica com uma pessoa só.'
+            : (() => { const e = reg && reg.presente && lista.find((g) => g.id === reg.presente && !reservas.some((x) => x.presente === g.id)); return e ? `Você escolheu “${esc(e.nome)}”. Falta confirmar sua presença para garantir o presente.` : 'Toque em Reservar: depois é só confirmar sua presença para garantir o presente.'; })()}</p>
+        ${ja ? '' : '<a class="volta-fim pg-cta" href="#rsvp" data-ir-confirmar>Confirmar presença</a>'}` : ''}`;
     }
 
     // Link do Google Maps que passa pela rota desenhada: parte de onde a pessoa está, vai até o início da rota
@@ -519,7 +530,7 @@
     const avisosTit = (cv) => String((cv && cv.avisos_titulo) || '').trim() || 'Avisos importantes';
     const slugDe = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
     const RESERVADAS = new Set(['rsvp', 'presentes', 'mapa', 'app']);
-    let EV = null;
+    let EV = null, CTX = null;
     const FORMATOS = ['numerada', 'lista', 'texto'];
     function paginasDe(ev) {
       const cv = (ev && ev.convite) || {};
@@ -595,6 +606,14 @@
       .pg-presentes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
       .pg-presentes li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--linha, #e6ddd0); overflow-wrap: anywhere; }
       .pg-presentes li small { flex: none; font-size: .8rem; color: var(--suave, #6f665b); }
+      .pg-presentes li.meu { border-color: var(--cor, #b4781f); background: var(--cor-fundo, #f7ecd9); }
+      .pr-nome { min-width: 0; }
+      .pr-acoes { display: flex; align-items: center; gap: 8px; flex: none; }
+      .pr-meu { color: var(--cor-escura, #8a5a12) !important; font-weight: 700; }
+      .pr-btn { flex: none; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--cor, #b4781f); color: #fff; font: 600 .88rem/1 inherit; font-family: inherit; cursor: pointer; }
+      .pr-btn.sec { background: transparent; color: var(--cor-escura, #8a5a12); border: 1.5px solid var(--linha, #e6ddd0); }
+      .pr-btn:disabled { opacity: .6; cursor: wait; }
+      .pr-btn:focus-visible { outline: 3px solid var(--cor, #b4781f); outline-offset: 2px; }
       .pg-presentes li.reservado span { opacity: .55; text-decoration: line-through; }
       .pg-presentes a { color: var(--cor-escura, #8a5a12); font-weight: 600; }
       .pg-nota { margin: 12px 0 0; text-align: center; font-size: .86rem; color: var(--suave, #6f665b); }
@@ -665,6 +684,57 @@
       fundo.style.backgroundColor = ap.cor;
       if (ap.imagem && ap.imagem !== 'none') { fundo.style.backgroundImage = ap.imagem; fundo.style.backgroundSize = ap.tamanho; }
     }
+    // Reserva direto na página de presentes. Quem já respondeu grava na hora; quem ainda não respondeu
+    // leva o presente escolhido para o formulário de confirmação.
+    const msgPresentes = (t, erro) => todos('[data-pr-msg]').forEach((p) => { p.textContent = t; p.style.color = erro ? '#b3261e' : ''; });
+    const redesenharPresentes = () => { const id = (lsGet() || {}).id; todos('[data-presentes-corpo]').forEach((el) => { el.innerHTML = presentesHtml(EV, id); }); };
+    async function recarregarReservas() {
+      try {
+        const x = await fetch(`${API}/convite/${encodeURIComponent(evId)}${convId ? `?c=${encodeURIComponent(convId)}` : ''}`, { cache: 'no-store' }).then((y) => y.json());
+        if (Array.isArray(x.reservas)) reservas = x.reservas;
+      } catch { /* fica a lista que tinha */ }
+    }
+    async function reservarPresente(gid, btn, irConfirmar) {
+      const reg = lsGet();
+      const g = (EV.presentes || []).find((x) => x && x.id === gid);
+      if (!reg || !reg.enviado || !reg.id) {
+        lsSet({ ...(reg || {}), presente: gid, convidado: CTX && CTX.convidado ? CTX.convidado.id : (reg && reg.convidado) || null, enviado: false });
+        formRsvp(EV, CTX); atualizarCta(); redesenharPresentes();
+        irConfirmar();
+        return;
+      }
+      const atual = reg.presente && (EV.presentes || []).find((x) => x && x.id === reg.presente);
+      if (gid && atual && atual.id !== gid && !confirm(`Trocar "${atual.nome}" por "${g ? g.nome : 'este presente'}"?`)) return;
+      if (!gid && !confirm(`Desistir de "${atual ? atual.nome : 'o presente'}"? Ele volta a ficar disponível.`)) return;
+      btn.disabled = true;
+      msgPresentes('Salvando…');
+      const { id, enviado, ...dados } = reg;
+      dados.presente = gid || null;
+      dados.atualizado_em = new Date().toISOString();
+      try {
+        const r = await fetch(`${API}/dados/confirmacoes/${encodeURIComponent(id)}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados),
+        });
+        if (r.status === 409 && (await r.json().catch(() => ({}))).erro === 'presente já reservado') {
+          // Alguém reservou antes: atualiza a lista para mostrar.
+          await recarregarReservas();
+          redesenharPresentes();
+          msgPresentes('Esse presente acabou de ser reservado por outra pessoa. Escolha outro.', true);
+          return;
+        }
+        if (!r.ok) throw new Error(r.status);
+        const novo = { ...dados, id, enviado: true };
+        lsSet(novo);
+        reservas = reservas.filter((x) => x.id !== id);
+        if (novo.presente) reservas.push({ id, presente: novo.presente });
+        redesenharPresentes();
+        msgPresentes(gid ? `Pronto! "${g ? g.nome : 'O presente'}" ficou reservado para você.` : 'Pronto, o presente voltou a ficar disponível.');
+        if ($id('rsvp')) obrigado(EV, CTX, novo);
+      } catch {
+        btn.disabled = false;
+        msgPresentes('Não consegui salvar. Verifique a internet e tente de novo.', true);
+      }
+    }
     function montarPaginas(ev, vals) {
       const cv = ev.convite || {};
       EV = ev;
@@ -717,6 +787,8 @@
         sr.querySelectorAll('[data-volta]').forEach((a) => a.addEventListener('click', voltar));
         // Da página de presentes direto para a confirmação.
         sr.addEventListener('click', (e) => {
+          const res = e.target.closest('[data-reservar]'), des = e.target.closest('[data-desistir]');
+          if (res || des) { reservarPresente(res ? res.dataset.reservar : '', res || des, () => { voltar(e); setTimeout(() => irRsvp({ preventDefault() {} }), 350); }); return; }
           const a = e.target.closest('[data-ir-confirmar]');
           if (!a) return;
           voltar(e);
@@ -826,7 +898,8 @@
       const ics = $id('ics');
       if (ics) ics.onclick = () => baixarIcs(ev, titulo, [local, endereco].filter(Boolean).join(', '));
       montarPaginas(ev, VALS);
-      formRsvp(ev, { convidado, nome, lugares, pedirIdade, pedirSexo, encerrado });
+      CTX = { convidado, nome, lugares, pedirIdade, pedirSexo, encerrado };
+      formRsvp(ev, CTX);
       ligarContagem(ev);
       ligarBarra(encerrado, prazoTxt);
       atualizarCta();
@@ -845,8 +918,8 @@
       const st = {
         resposta: ant ? ant.resposta : '',
         nome: (ant && ant.nome) || ctx.nome || '',
-        adultos: ant ? ant.adultos : 1,
-        criancas: ant ? ant.criancas : 0,
+        adultos: ant && ant.adultos != null ? ant.adultos : 1,
+        criancas: ant && ant.criancas != null ? ant.criancas : 0,
         idades: ant ? ant.idades || [] : [],
         sexos: ant ? ant.sexos || [] : [],
         contato: (ant && ant.contato) || '',
@@ -871,6 +944,7 @@
         box.innerHTML = `
           <h2 id="rsvp-tit">Confirme sua presença</h2>
           <p class="sub">Sua resposta ajuda a organizar a festa.</p>
+          ${(() => { const g = st.presente && st.resposta !== 'nao' && livres().find((x) => x.id === st.presente); return g ? `<p class="sub pres-escolhido">Presente escolhido: <strong>${esc(g.nome)}</strong>.${vai ? '' : ' Responda “Vou sim” ou “Talvez” e envie para garantir.'}</p>` : ''; })()}
           <div class="escolha" role="group" aria-label="Você vai?">
             <button type="button" data-resp="sim" aria-pressed="${st.resposta === 'sim'}">Vou sim</button>
             <button type="button" data-resp="talvez" aria-pressed="${st.resposta === 'talvez'}">Talvez</button>
@@ -960,6 +1034,16 @@
           const r = await fetch(`${API}/dados/confirmacoes/${encodeURIComponent(id)}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados),
           });
+          if (r.status === 409 && dados.presente && (await r.json().catch(() => ({}))).erro === 'presente já reservado') {
+            await recarregarReservas();
+            st.presente = '';
+            desenhar();
+            redesenharPresentes();
+            const a = $id('aviso');
+            a.textContent = 'O presente escolhido acabou de ser reservado por outra pessoa. Escolha outro ou envie sem presente.';
+            a.classList.add('erro');
+            return;
+          }
           if (!r.ok) throw new Error(r.status);
           const reg = { ...dados, id, enviado: true };
           lsSet(reg);

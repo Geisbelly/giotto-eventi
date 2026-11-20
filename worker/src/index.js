@@ -195,6 +195,16 @@ export default {
           if (!ev || ev.removido) return json({ erro: 'evento não encontrado' }, 404, h);
           const antes = await registro(env, 'confirmacoes', id);
           if (antes && (antes.evento !== evId || antes.removido)) return json({ erro: 'resposta de outro evento' }, 409, h);
+          // O mesmo presente não pode ficar com duas pessoas.
+          const pres = typeof dados.presente === 'string' ? dados.presente : '';
+          if (pres && dados.resposta !== 'nao') {
+            const outro = await env.DB.prepare(
+              `SELECT id FROM registros WHERE colecao = 'confirmacoes' AND id != ?1 AND json_extract(dados, '$.evento') = ?2
+               AND json_extract(dados, '$.presente') = ?3 AND coalesce(json_extract(dados, '$.resposta'), '') != 'nao'
+               AND coalesce(json_extract(dados, '$.removido'), 0) = 0 LIMIT 1`,
+            ).bind(id, evId, pres).first();
+            if (outro) return json({ erro: 'presente já reservado' }, 409, h);
+          }
         }
         const em = quando(dados.atualizado_em);
         const limpo = { ...limparGenerico(dados), id, removido: dados.removido === true };
