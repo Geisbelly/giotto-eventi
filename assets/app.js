@@ -4,7 +4,7 @@
   /* ============ Config e utilidades ============ */
   const CFG = Object.assign({ apiUrl: '', repo: '' }, window.LEP_CONFIG || {});
   const API = (CFG.apiUrl || '').replace(/\/+$/, '');
-  const LS = { catalogo: 'lep.catalogo.v1', eventos: 'lep.eventos.v1', evPend: 'lep.eventos.pend.v1', visitas: 'lep.visitas.v1', pendentes: 'lep.pendentes.v1', chave: 'lep.chave', ui: 'lep.ui.v1' };
+  const LS = { catalogo: 'lep.catalogo.v1', eventos: 'lep.eventos.v1', evPend: 'lep.eventos.pend.v1', evBase: 'lep.eventos.base.v1', visitas: 'lep.visitas.v1', pendentes: 'lep.pendentes.v1', chave: 'lep.chave', ui: 'lep.ui.v1' };
   const MAX_CMP = 4;
 
   const $ = (s, r = document) => r.querySelector(s);
@@ -426,7 +426,7 @@
   const S = {
     locais: [], porId: {}, dataDados: '', base: [], fbase: [], remotos: [],
     secao: 'espacos', paginaEv: null, rsvp: {}, rsvpPedido: {}, abaEv: 'geral', escAberto: new Set(), convF: 'todos', convBusca: '', convAberto: new Set(),
-    eventos: lsGet(LS.eventos, {}), evPend: new Set(lsGet(LS.evPend, [])),
+    eventos: lsGet(LS.eventos, {}), evPend: new Set(lsGet(LS.evPend, [])), evBase: lsGet(LS.evBase, {}),
     visitas: lsGet(LS.visitas, {}),
     pendentes: new Set(lsGet(LS.pendentes, [])),
     chave: lsGet(LS.chave, ''),
@@ -2124,9 +2124,9 @@
   // Sem chave não há eventos: some a cópia que este aparelho tenha guardado da nuvem (o que ainda não subiu fica).
   const eventosTrancados = () => !!API && !S.chave;
   function esquecerEventosDaNuvem() {
-    for (const id of Object.keys(S.eventos)) if (!S.evPend.has(id)) delete S.eventos[id];
+    for (const id of Object.keys(S.eventos)) if (!S.evPend.has(id)) { delete S.eventos[id]; delete S.evBase[id]; }
     S.rsvp = {}; S.rsvpPedido = {};
-    lsSet(LS.eventos, S.eventos);
+    lsSet(LS.eventos, S.eventos); lsSet(LS.evBase, S.evBase);
   }
   const trancaEventosHtml = () => `<div class="vazio"><h3>Eventos protegidos</h3>
     <p>Os eventos têm contatos, convidados e orçamento, por isso só abrem com a chave de edição. Quem recebe um convite vê apenas o convite.</p>
@@ -2161,20 +2161,34 @@
   async function sincronizarAgora() {
     if (!API || !S.chave || !S.evPend.size) { atualizarFaixaSync(); return; }
     falhaEv = false;
+    // Antes de subir, olha a nuvem: se outro aparelho mudou o evento depois da cópia daqui, junta as duas mudanças
+    // em vez de sobrescrever (vale o que este aparelho mudou; o resto fica como está na nuvem).
+    let nuvem = {}, mesclou = false;
+    try {
+      const r = await fetch(`${API}/dados/eventos`, { cache: 'no-store', headers: { 'X-Chave': S.chave } });
+      if (r.ok) for (const x of await r.json()) nuvem[x.id] = { ...x.dados, id: x.id, atualizado_em: x.atualizado_em };
+    } catch { nuvem = {}; }
     for (const id of [...S.evPend]) {
       try {
         if (!S.eventos[id]) { S.evPend.delete(id); continue; }
-        const enviado = S.eventos[id].atualizado_em;
+        const base = S.evBase[id], la = nuvem[id];
+        if (base && la && la.atualizado_em !== base.atualizado_em) {
+          S.eventos[id] = { ...mesclarEvento(base, S.eventos[id], la), atualizado_em: new Date().toISOString() };
+          lsSet(LS.eventos, S.eventos); mesclou = true;
+        }
+        const enviado = S.eventos[id];
         const r = await fetch(`${API}/dados/eventos/${encodeURIComponent(id)}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Chave': S.chave }, body: JSON.stringify(S.eventos[id]),
+          method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Chave': S.chave }, body: JSON.stringify(enviado),
         });
         if (r.status === 401) { falhaEv = true; toast('Chave de edição recusada. O evento ficou guardado só neste aparelho até você entrar de novo.'); break; }
         if (!r.ok) throw new Error(r.status);
+        S.evBase[id] = JSON.parse(JSON.stringify(enviado));
         // Se mudou de novo enquanto subia, continua pendente para a próxima rodada.
-        if (S.eventos[id] && S.eventos[id].atualizado_em === enviado) S.evPend.delete(id);
+        if (S.eventos[id] && S.eventos[id].atualizado_em === enviado.atualizado_em) S.evPend.delete(id);
       } catch { falhaEv = true; /* tenta de novo depois */ }
     }
-    lsSet(LS.evPend, [...S.evPend]);
+    lsSet(LS.evPend, [...S.evPend]); lsSet(LS.evBase, S.evBase);
+    if (mesclou && !digitando()) renderTudo();
     atualizarFaixaSync();
   }
   // Faixa na página do evento quando o que está na tela ainda não chegou à nuvem (e ao convite).
@@ -2214,13 +2228,44 @@
       if (!r.ok) throw new Error(r.status);
       for (const { id, dados, atualizado_em: em } of await r.json()) {
         const loc = S.eventos[id];
-        if (!loc || (loc.atualizado_em || '') < em) { S.eventos[id] = { ...dados, id, atualizado_em: em }; S.evPend.delete(id); }
+        const nuvem = { ...dados, id, atualizado_em: em };
+        // Com alteração pendente aqui, a cópia local fica; a sincronização junta com a da nuvem.
+        if (S.evPend.has(id) && loc) continue;
+        if (!loc || (loc.atualizado_em || '') <= em) { S.eventos[id] = nuvem; S.evBase[id] = nuvem; }
       }
-      lsSet(LS.eventos, S.eventos); lsSet(LS.evPend, [...S.evPend]);
+      lsSet(LS.eventos, S.eventos); lsSet(LS.evPend, [...S.evPend]); lsSet(LS.evBase, S.evBase);
       sincronizarEventos();
     } catch { /* fica com o que está no aparelho */ }
   }
   window.addEventListener('online', sincronizarEventos);
+  const digitando = () => { const a = document.activeElement; return !!(a && a.matches && a.matches('input, textarea, select, [contenteditable]')); };
+  // Ao voltar para o site (outra aba, outro app), busca o que mudou na nuvem para não editar uma cópia velha.
+  async function atualizarDaNuvem() {
+    if (!API || !S.chave || document.hidden) return;
+    const antes = JSON.stringify(S.eventos);
+    await carregarEventos();
+    if (JSON.stringify(S.eventos) !== antes && !digitando()) renderTudo();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarDaNuvem(); });
+  setInterval(atualizarDaNuvem, 120000);
+  // Junta duas versões do evento a partir da que as duas tinham em comum (base): o que mudou aqui ganha; o resto vem da nuvem.
+  function mesclarEvento(base, local, nuvem) {
+    const b = evCompleto(base), l = evCompleto(local), out = JSON.parse(JSON.stringify(nuvem));
+    const mudou = (x, y) => JSON.stringify(x) !== JSON.stringify(y);
+    for (const k of new Set([...Object.keys(l), ...Object.keys(b)])) {
+      if (k === 'atualizado_em' || k === 'id') continue;
+      if (k === 'convite') {
+        const lc = l.convite || {}, bc = b.convite || {};
+        out.convite = { ...((nuvem && nuvem.convite) || {}) };
+        for (const c of new Set([...Object.keys(lc), ...Object.keys(bc)])) {
+          if (mudou(lc[c], bc[c])) { if (c in lc) out.convite[c] = lc[c]; else delete out.convite[c]; }
+        }
+        continue;
+      }
+      if (mudou(l[k], b[k])) { if (k in l) out[k] = l[k]; else delete out[k]; }
+    }
+    return out;
+  }
 
   function contas(ev) {
     const fech = ev.escolhas.filter((e) => fechado(e.status));
