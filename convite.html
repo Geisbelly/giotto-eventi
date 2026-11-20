@@ -223,18 +223,23 @@
       fecha();
       return html;
     }
+    // Conteúdo da página de presentes: dica (uma por linha, com subtítulos) e a lista para reservar.
     function presentesHtml(ev, minha) {
       const cv = ev.convite || {};
       const lista = (ev.presentes || []).filter((g) => g && g.nome);
-      if (!cv.presente_dica && !lista.length) return '';
-      return `<div class="presentes"><h2>Sugestão de presente</h2>
-        ${dicaHtml(cv.presente_dica)}
-        ${lista.length ? `<ul>${lista.map((g) => {
+      if (!String(cv.presente_dica || '').trim() && !lista.length) return '';
+      const dica = String(cv.presente_dica || '').trim() ? conteudoPagina({ formato: 'lista', texto: String(cv.presente_dica).split('\n').flatMap((l) => l.split(/\s+[-–•]\s+/)).join('\n') }) : '';
+      const ja = respondeu();
+      return `${dica}
+        ${lista.length ? `<h2 class="pg-sub">${dica ? 'Lista para reservar' : 'Escolha um presente'}</h2>
+        <ul class="pg-presentes">${lista.map((g) => {
           const r = reservas.find((x) => x.presente === g.id);
           const meu = minha && r && r.id === minha;
-          return `<li class="${r && !meu ? 'reservado' : ''}">${urlOk(g.link) ? `<a href="${esc(g.link)}" target="_blank" rel="noopener">${esc(g.nome)}</a>` : esc(g.nome)}
+          return `<li class="${r && !meu ? 'reservado' : ''}"><span>${urlOk(g.link) ? `<a href="${esc(g.link)}" target="_blank" rel="noopener">${esc(g.nome)}</a>` : esc(g.nome)}</span>
             <small>${meu ? 'Você reservou' : r ? 'Já reservado' : 'Disponível'}</small></li>`;
-        }).join('')}</ul><p class="nota">Para reservar um presente, escolha na confirmação de presença.</p>` : ''}</div>`;
+        }).join('')}</ul>
+        <p class="pg-nota">Para reservar, escolha o presente na confirmação de presença.</p>
+        ${ja ? '' : '<a class="volta-fim pg-cta" href="#rsvp" data-ir-confirmar>Confirmar presença e reservar</a>'}` : ''}`;
     }
 
     // Link do Google Maps que passa pela rota desenhada: parte de onde a pessoa está, vai até o início da rota
@@ -290,7 +295,7 @@
 
 
     /* ---- Modelo HTML feito pelo organizador ----
-       Os campos {{titulo}}, {{data}}... viram texto; {{confirmacao}}, {{mapa}}, {{agenda}} e {{presentes}}
+       Os campos {{titulo}}, {{data}}... viram texto; {{confirmacao}}, {{mapa}} e {{agenda}}; {{presentes}}, {{avisos}} e {{paginas}} viram botões das páginas
        viram blocos prontos. Scripts e eventos são removidos: o HTML só define a aparência. */
     function limparModelo(doc) {
       doc.querySelectorAll('script,iframe,frame,frameset,object,embed,applet,base,meta,form,portal,noscript,template').forEach((e) => e.remove());
@@ -382,11 +387,12 @@
         if (ultimo && ultimo.parentNode) { depois(ultimo, c); ultimo = c; } else { const r = doc.querySelector('[data-convite="rsvp"]'); r.parentNode.insertBefore(c, r); }
       }
       const antesRsvp = (el) => { const r = doc.querySelector('[data-convite="rsvp"]'); r.parentNode.insertBefore(el, r); };
-      const pgs = paginasDe(ev.convite);
+      const pgs = paginasDe(ev);
+      const presNoModelo = !!doc.querySelector('[data-convite="presentes"]');
       const avisoNoModelo = doc.querySelector('[data-convite="avisos"]');
       if (avisoNoModelo) ultimo = avisoNoModelo;
       else if (pgs.some((p) => p.aviso)) { const a = bloco('avisos'); if (ultimo && ultimo.parentNode) { depois(ultimo, a); ultimo = a; } else antesRsvp(a); }
-      if (!doc.querySelector('[data-convite="paginas"]') && pgs.some((p) => !p.aviso)) {
+      if (!doc.querySelector('[data-convite="paginas"]') && pgs.some((p) => !p.aviso && !(presNoModelo && p.presentes))) {
         const a = bloco('paginas'); if (ultimo && ultimo.parentNode) depois(ultimo, a); else antesRsvp(a);
       }
       cssDosBlocos();
@@ -399,9 +405,9 @@
         rsvp: () => '<section class="rsvp" id="rsvp" aria-labelledby="rsvp-tit"></section>',
         mapa: () => (x.dest ? rotaHtml(x.cv, x.dest, x.rota) : ''),
         agenda: () => agendaHtml(ev, vals.titulo, x.ondeTxt),
-        presentes: () => `<div id="presentes">${presentesHtml(ev, (lsGet() || {}).id)}</div>`,
-        avisos: () => avisosBotao(ev.convite),
-        paginas: () => paginasBotoes(ev.convite, false),
+        presentes: () => presentesBotao(ev),
+        avisos: () => avisosBotao(ev),
+        paginas: () => paginasBotoes(ev, false, presNoModelo),
         cta: () => ctaHtml(x.prazoTxt, !x.ctaOk),
         contagem: () => contagemHtml(),
       };
@@ -513,9 +519,10 @@
     const avisosTit = (cv) => String((cv && cv.avisos_titulo) || '').trim() || 'Avisos importantes';
     const slugDe = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
     const RESERVADAS = new Set(['rsvp', 'presentes', 'mapa', 'app']);
+    let EV = null;
     const FORMATOS = ['numerada', 'lista', 'texto'];
-    function paginasDe(cv) {
-      cv = cv || {};
+    function paginasDe(ev) {
+      const cv = (ev && ev.convite) || {};
       const usadas = new Set();
       const rotaUnica = (base) => { let r = base, n = 2; while (usadas.has(r) || RESERVADAS.has(r)) r = `${base}-${n++}`; usadas.add(r); return r; };
       const ls = [];
@@ -523,6 +530,11 @@
       if (avisosDe(cv).length) {
         ls.push({ id: 'avisos', rota: rotaUnica('avisos'), titulo: avisosTit(cv), texto: cv.avisos, formato: 'numerada', aviso: true,
           modelo: cv.avisos_modelo_html || '', resumo: `${av.length === 1 ? '1 aviso' : `${av.length} avisos`} de quem convida. Toque para ler.` });
+      }
+      const lista = ((ev && ev.presentes) || []).filter((g) => g && g.nome);
+      if (String(cv.presente_dica || '').trim() || lista.length) {
+        ls.push({ id: 'presentes', rota: 'presentes', titulo: String(cv.presente_titulo || '').trim() || 'Sugestão de presente', presentes: true,
+          modelo: cv.presentes_modelo_html || '', resumo: lista.length ? 'Ideias e lista de presentes para reservar.' : 'Ideias de presente. Toque para ver.' });
       }
       for (const p of Array.isArray(cv.paginas) ? cv.paginas : []) {
         if (!p || !String(p.titulo || '').trim() || !String(p.texto || '').trim()) continue;
@@ -533,14 +545,18 @@
     }
     const icAviso = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>';
     const icPagina = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg>';
-    const paginaBotao = (pg) => `<a class="btn-avisos ${pg.aviso ? '' : 'btn-pagina'}" href="#${pg.rota}" data-pg-abrir="${pg.rota}">${pg.aviso ? icAviso : icPagina}<span>${esc(pg.titulo)}<small>${esc(pg.resumo)}</small></span><span class="seta" aria-hidden="true">›</span></a>`;
-    function avisosBotao(cv) { const pg = paginasDe(cv).find((p) => p.aviso); return pg ? paginaBotao(pg) : ''; }
-    function paginasBotoes(cv, comAvisos) {
-      const ls = paginasDe(cv).filter((p) => comAvisos || !p.aviso);
+    const icPresente = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18v4H3zM5 13v8h14v-8M12 9v12"/><path d="M12 9c-1.5-4-6-4.5-6-1.5C6 9 12 9 12 9zM12 9c1.5-4 6-4.5 6-1.5C18 9 12 9 12 9z"/></svg>';
+    const paginaBotao = (pg) => `<a class="btn-avisos ${pg.aviso ? '' : 'btn-pagina'}" href="#${pg.rota}" data-pg-abrir="${pg.rota}">${pg.aviso ? icAviso : pg.presentes ? icPresente : icPagina}<span>${esc(pg.titulo)}<small>${esc(pg.resumo)}</small></span><span class="seta" aria-hidden="true">›</span></a>`;
+    function avisosBotao(ev) { const pg = paginasDe(ev).find((p) => p.aviso); return pg ? paginaBotao(pg) : ''; }
+    function presentesBotao(ev) { const pg = paginasDe(ev).find((p) => p.presentes); return pg ? paginaBotao(pg) : ''; }
+    // comAvisos: inclui o botão de avisos; semPresentes: o modelo já tem {{presentes}} em outro lugar.
+    function paginasBotoes(ev, comAvisos, semPresentes) {
+      const ls = paginasDe(ev).filter((p) => (comAvisos || !p.aviso) && !(semPresentes && p.presentes));
       return ls.length ? `<div class="paginas-botoes">${ls.map(paginaBotao).join('')}</div>` : '';
     }
     // Conteúdo: uma linha por item; linha terminada em ":" vira subtítulo. No formato texto, linha em branco separa parágrafos.
     function conteudoPagina(pg) {
+      if (pg.presentes) return `<div class="pg-conteudo lista" data-presentes-corpo>${presentesHtml(EV, (lsGet() || {}).id)}</div>`;
       if (pg.formato === 'texto') {
         return `<div class="pg-texto">${String(pg.texto).split(/\n\s*\n/).map((par) => par.trim()).filter(Boolean)
           .map((par) => `<p>${esc(par).replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
@@ -576,7 +592,14 @@
       .numerada .pg-itens li::before { counter-increment: it; content: counter(it); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--cor, #b4781f); color: #fff; font-weight: 700; font-size: .88rem; line-height: 1; }
       .lista .pg-itens li { grid-template-columns: 10px 1fr; }
       .lista .pg-itens li::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--cor, #b4781f); margin-top: .5em; }
+      .pg-presentes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+      .pg-presentes li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--linha, #e6ddd0); overflow-wrap: anywhere; }
+      .pg-presentes li small { flex: none; font-size: .8rem; color: var(--suave, #6f665b); }
+      .pg-presentes li.reservado span { opacity: .55; text-decoration: line-through; }
+      .pg-presentes a { color: var(--cor-escura, #8a5a12); font-weight: 600; }
+      .pg-nota { margin: 12px 0 0; text-align: center; font-size: .86rem; color: var(--suave, #6f665b); }
       .pg-texto { text-align: left; line-height: 1.7; }
+      .pg-conteudo:has(.pg-cta) ~ .volta-fim { background: transparent; color: var(--cor-escura, #8a5a12); border: 1.5px solid var(--linha, #e6ddd0); margin-top: 10px; }
       .pg-texto p { margin: 0 0 14px; }
       .volta-fim { display: flex; justify-content: center; align-items: center; min-height: 52px; margin-top: 26px; border-radius: 14px; background: var(--cor, #b4781f); color: #fff; font-weight: 700; text-decoration: none; }
       @media (min-width: 600px) { .pg-wrap { padding-top: 28px; } .pg-cartao { padding: 40px 36px 32px; } }
@@ -644,7 +667,8 @@
     }
     function montarPaginas(ev, vals) {
       const cv = ev.convite || {};
-      const pgs = paginasDe(cv);
+      EV = ev;
+      const pgs = paginasDe(ev);
       if (!pgs.length) return;
       const ap = aparenciaConvite();
       const hosts = {};
@@ -659,6 +683,7 @@
         if (String(modelo).trim()) paginaPropria(sr, { ...pg, modelo }, { ...vals, evento: vals.titulo, titulo: pg.titulo });
         else paginaPadrao(sr, pg, vals, ap);
         document.body.appendChild(host);
+        RAIZES.push(sr);
         hosts[pg.rota] = { host, sr };
       }
       let y = 0, aberta = null;
@@ -688,7 +713,16 @@
         if (history.state && history.state.pg) history.back();
         else { history.replaceState(null, '', location.pathname + location.search); mostrar(); }
       };
-      Object.values(hosts).forEach(({ sr }) => sr.querySelectorAll('[data-volta]').forEach((a) => a.addEventListener('click', voltar)));
+      Object.values(hosts).forEach(({ sr }) => {
+        sr.querySelectorAll('[data-volta]').forEach((a) => a.addEventListener('click', voltar));
+        // Da página de presentes direto para a confirmação.
+        sr.addEventListener('click', (e) => {
+          const a = e.target.closest('[data-ir-confirmar]');
+          if (!a) return;
+          voltar(e);
+          setTimeout(() => irRsvp({ preventDefault() {} }), 350);
+        });
+      });
       todos('[data-pg-abrir]').forEach((a) => a.addEventListener('click', (e) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey) return;
         e.preventDefault();
@@ -776,13 +810,12 @@
             ${cv.mensagem ? `<p class="mensagem">${esc(cv.mensagem)}</p>` : ''}
             ${ctaHtml(prazoTxt, encerrado)}
             ${lugares ? `<p class="prazo">Este convite vale para até ${lugares} ${lugares === 1 ? 'pessoa' : 'pessoas'}.</p>` : ''}
-            ${paginasBotoes(cv, true) ? `<div class="secao-avisos">${paginasBotoes(cv, true)}</div>` : ''}
+            ${paginasBotoes(ev, true) ? `<div class="secao-avisos">${paginasBotoes(ev, true)}</div>` : ''}
             ${local || endereco || dest ? `<section class="secao"><h2>Onde</h2>
               <div class="local">${local ? `<strong>${esc(local)}</strong>` : ''}${endereco ? `<span>${esc(endereco)}</span>` : ''}
               ${!dest && mapa ? `<a href="${esc(mapa)}" target="_blank" rel="noopener">Como chegar</a>` : ''}</div>
               ${dest ? rotaHtml(cv, dest, rota) : ''}</section>` : ''}
             ${agendaHtml(ev, titulo, '') ? `<section class="secao"><h2>Salve a data</h2>${agendaHtml(ev, titulo, [local, endereco].filter(Boolean).join(', '))}</section>` : ''}
-            <div id="presentes">${presentesHtml(ev, (lsGet() || {}).id)}</div>
           </div>
           <section class="rsvp" id="rsvp" aria-labelledby="rsvp-tit"></section>
           <p class="imprimir-rsvp">Confirme sua presença pelo link do convite${ev.organiza ? ` ou com ${esc(ev.organiza)}` : ''}.</p>
@@ -932,7 +965,7 @@
           lsSet(reg);
           reservas = reservas.filter((x) => x.id !== id);
           if (reg.presente) reservas.push(reg);
-          $id('presentes').innerHTML = presentesHtml(ev, id);
+          todos('[data-presentes-corpo]').forEach((el) => { el.innerHTML = presentesHtml(ev, id); });
           obrigado(ev, ctx, reg);
         } catch {
           btn.disabled = false;

@@ -2715,7 +2715,9 @@
         </div>
       </details>
       <details class="conv-cfg" ${ev.presentes.length || cv.presente_dica ? 'open' : ''}><summary>Presentes ${presentesResumo(ev)}</summary>
-        <label class="campo"><span>Dica de presente (uma por linha; aparece no convite)</span><textarea data-evc="convite.presente_dica" rows="5" maxlength="500" placeholder="Guia de tamanhos:&#10;Roupa M ou G&#10;Sapato 19 para cima&#10;Fralda G ou GG">${esc(cv.presente_dica || '')}</textarea></label>
+        <p class="ajuda">Vira uma página própria do convite (endereço <code>#presentes</code>), aberta por um botão, com a dica e a lista para reservar.${cv.modelo === 'html' ? ' No HTML do convite, <code>{{presentes}}</code> marca onde fica o botão; sem ele, o botão entra junto com os de avisos e páginas.' : ''}</p>
+        <label class="campo"><span>Título da página</span><input data-evc="convite.presente_titulo" maxlength="80" value="${esc(cv.presente_titulo || '')}" placeholder="Sugestão de presente"></label>
+        <label class="campo"><span>Dica de presente (uma por linha; linha que termina em dois-pontos vira subtítulo)</span><textarea data-evc="convite.presente_dica" rows="5" maxlength="500" placeholder="Guia de tamanhos:&#10;Roupa M ou G&#10;Sapato 19 para cima&#10;Fralda G ou GG">${esc(cv.presente_dica || '')}</textarea></label>
         <p class="ajuda">Lista de presentes (opcional): o convidado pode reservar um item ao confirmar, e o item reservado some para os outros.</p>
         <div class="linhas-ev">${ev.presentes.map((g, i) => {
           const quem = reservaDe(ev, g.id);
@@ -2726,6 +2728,8 @@
             <button type="button" class="tirar-linha" data-ev-tirar="presentes:${i}" aria-label="Remover">×</button></div>`;
         }).join('')}</div>
         <button type="button" class="btn ghost add-linha" data-ev-add="presentes">${ic('mais')}Adicionar presente</button>
+        <details class="sub-cfg" ${cv.presentes_modelo_html ? 'open' : ''}><summary>HTML próprio da página de presentes (opcional)</summary>
+          <textarea class="codigo" data-evc="convite.presentes_modelo_html" rows="8" spellcheck="false" autocapitalize="off" placeholder="Vazio = usa o modelo das páginas ou a aparência do convite">${esc(cv.presentes_modelo_html || '')}</textarea></details>
       </details>`;
   }
 
