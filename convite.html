@@ -856,7 +856,7 @@
           <g stroke="#fff" stroke-opacity=".55">${sol}</g>
           <ellipse cx="34" cy="24" rx="12" ry="6" fill="#fff" opacity=".22" transform="rotate(-25 34 24)"/>
         </svg>`;
-      const para = vals.convidado ? `Para <b>${esc(vals.convidado)}</b>` : esc(vals.titulo);
+      const para = `Para <b>${vals.convidado ? esc(vals.convidado) : 'você'}</b>`;
       sr.innerHTML = `<style>
         :host { all: initial; }
         * { box-sizing: border-box; }
