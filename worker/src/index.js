@@ -2,15 +2,43 @@
 // GET  /visitas            -> lista pública de visitas
 // GET  /verificar          -> 204 se a chave (header X-Chave) estiver certa
 // PUT  /visitas/:local_id  -> grava a visita (sem chave)
-// GET  /dados/:colecao     -> locais, fornecedores, eventos e confirmacoes (público; ?evento=id filtra confirmações)
-// PUT  /dados/:colecao/:id -> cadastra ou edita sem chave. Excluir (removido: true) exige X-Chave
+// GET  /dados/:colecao     -> locais e fornecedores são públicos; eventos e confirmacoes exigem X-Chave (?evento=id filtra)
+// PUT  /dados/:colecao/:id -> locais e fornecedores sem chave (excluir exige X-Chave); eventos só com X-Chave;
+//                             confirmacoes sem chave só para um evento que existe, sem excluir nem trocar de evento
+// GET  /convite/:evento    -> só o que o convidado vê (?c=id do convidado traz o nome e os lugares dele)
 
 const MAX_BYTES = 20_000;
 const MAX_BYTES_DADOS = 300_000;
 const MAX_HTML = 200_000; // campos *_html (modelo de convite feito pelo organizador)
-// publica = qualquer um lê e grava. A chave só vale para excluir.
-// confirmacoes = respostas dos convidados aos convites (uma por convidado, filtráveis por ?evento=).
-const COLECOES = { locais: { publica: true }, fornecedores: { publica: true }, eventos: { publica: true }, confirmacoes: { publica: true } };
+// ler/gravar: 'livre' = sem chave; 'chave' = exige X-Chave. Excluir (removido: true) sempre exige a chave.
+// Eventos têm dados pessoais (contato, convidados, idades, orçamento): só quem tem a chave lê ou grava.
+// confirmacoes = respostas dos convidados. O convidado grava sem chave pelo convite; a lista só sai com a chave.
+const COLECOES = {
+  locais: { ler: 'livre', gravar: 'livre' },
+  fornecedores: { ler: 'livre', gravar: 'livre' },
+  eventos: { ler: 'chave', gravar: 'chave' },
+  confirmacoes: { ler: 'chave', gravar: 'livre' },
+};
+const RE_ID = /^[a-z0-9-]{1,80}$/;
+
+async function registro(env, col, id) {
+  const r = await env.DB.prepare('SELECT dados FROM registros WHERE colecao = ?1 AND id = ?2').bind(col, id).first();
+  return r ? JSON.parse(r.dados) : null;
+}
+
+// O que o convite mostra. Nada de contato, lista de convidados, orçamento, gastos ou escolhas.
+function eventoPublico(ev, convId) {
+  const conv = (Array.isArray(ev.convidados) ? ev.convidados : []).find((c) => c && c.id === convId);
+  const convite = { ...(ev.convite && typeof ev.convite === 'object' ? ev.convite : {}) };
+  if ((Array.isArray(ev.itens_festa) ? ev.itens_festa : []).some((i) => i && i.sexo)) convite.pedir_sexo = true;
+  return {
+    id: ev.id, nome: ev.nome || '', data: ev.data || '', hora_inicio: ev.hora_inicio || '', hora_fim: ev.hora_fim || '',
+    tema: ev.tema || '', organiza: ev.organiza || '', convite,
+    presentes: (Array.isArray(ev.presentes) ? ev.presentes : []).filter((g) => g && g.nome)
+      .map((g) => ({ id: g.id, nome: g.nome, link: g.link || '' })),
+    convidados: conv ? [{ id: conv.id, nome: conv.nome || '', lugares: conv.lugares ?? null }] : [],
+  };
+}
 const CRITERIOS = ['preco', 'estrutura', 'localizacao', 'atendimento', 'ambiente', 'qualidade', 'confianca', 'flexibilidade'];
 
 function cors(env, req) {
@@ -125,12 +153,27 @@ export default {
       return json({ ok: true }, 200, h);
     }
 
+    if (req.method === 'GET' && partes[0] === 'convite' && partes.length === 2) {
+      const id = decodeURIComponent(partes[1]);
+      if (!RE_ID.test(id)) return json({ erro: 'id inválido' }, 400, h);
+      const ev = await registro(env, 'eventos', id);
+      if (!ev || ev.removido) return json({ erro: 'não encontrado' }, 404, h);
+      // Presentes já reservados: só qual presente e o id da resposta, sem nome de quem reservou.
+      const { results } = await env.DB.prepare(
+        "SELECT id, dados FROM registros WHERE colecao = 'confirmacoes' AND json_extract(dados, '$.evento') = ?1",
+      ).bind(id).all();
+      const reservas = results.map((r) => ({ id: r.id, d: JSON.parse(r.dados) }))
+        .filter((r) => r.d.presente && r.d.resposta !== 'nao' && !r.d.removido)
+        .map((r) => ({ id: r.id, presente: r.d.presente }));
+      return json({ evento: eventoPublico({ ...ev, id }, url.searchParams.get('c') || ''), reservas }, 200, { ...h, 'Cache-Control': 'no-store' });
+    }
+
     if (partes[0] === 'dados' && COLECOES[partes[1]]) {
       const col = partes[1];
       if (req.method === 'GET' && partes.length === 2) {
-        if (!COLECOES[col].publica && !(await chaveOk(req, env))) return json({ erro: 'chave inválida' }, 401, h);
+        if (COLECOES[col].ler !== 'livre' && !(await chaveOk(req, env))) return json({ erro: 'chave inválida' }, 401, h);
         const ev = url.searchParams.get('evento');
-        const { results } = ev && /^[a-z0-9-]{1,80}$/.test(ev)
+        const { results } = ev && RE_ID.test(ev)
           ? await env.DB.prepare("SELECT id, dados, atualizado_em FROM registros WHERE colecao = ?1 AND json_extract(dados, '$.evento') = ?2").bind(col, ev).all()
           : await env.DB.prepare('SELECT id, dados, atualizado_em FROM registros WHERE colecao = ?1').bind(col).all();
         return json(results.map((r) => ({ ...r, dados: JSON.parse(r.dados) })), 200, { ...h, 'Cache-Control': 'no-store' });
@@ -143,9 +186,16 @@ export default {
         let dados;
         try { dados = JSON.parse(corpo); } catch { return json({ erro: 'json inválido' }, 400, h); }
         if (!dados || typeof dados !== 'object' || Array.isArray(dados)) return json({ erro: 'formato inválido' }, 400, h);
-        // Cadastrar e editar é livre. A chave vale para excluir.
-        const exigeChave = !COLECOES[col].publica || dados.removido === true;
-        if (exigeChave && !(await chaveOk(req, env))) return json({ erro: 'chave inválida' }, 401, h);
+        const temChave = await chaveOk(req, env);
+        if ((COLECOES[col].gravar !== 'livre' || dados.removido === true) && !temChave) return json({ erro: 'chave inválida' }, 401, h);
+        if (col === 'confirmacoes' && !temChave) {
+          // Convidado: a resposta precisa ser de um evento que existe e não pode mudar de evento.
+          const evId = String(dados.evento || '');
+          const ev = RE_ID.test(evId) ? await registro(env, 'eventos', evId) : null;
+          if (!ev || ev.removido) return json({ erro: 'evento não encontrado' }, 404, h);
+          const antes = await registro(env, 'confirmacoes', id);
+          if (antes && (antes.evento !== evId || antes.removido)) return json({ erro: 'resposta de outro evento' }, 409, h);
+        }
         const em = quando(dados.atualizado_em);
         const limpo = { ...limparGenerico(dados), id, removido: dados.removido === true };
         await env.DB.prepare(

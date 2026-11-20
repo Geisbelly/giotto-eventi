@@ -446,7 +446,7 @@
 
   /* ============ Persistência e sincronização ============ */
   let timerSync = null;
-  // Visitas, cadastros e eventos vão direto para a nuvem, sem chave. A chave só vale para excluir.
+  // Visitas e cadastros vão direto para a nuvem, sem chave. A chave vale para excluir e para os eventos.
   function pedeChaveParaExcluir() {
     if (!API || S.chave) return false;
     toast('Para excluir, informe a chave de edição.');
@@ -591,7 +591,7 @@
       const contratados = evs.reduce((a, e) => a + (e.escolhas || []).filter((x) => x.status === 'contratado').length, 0);
       $('#trilha').innerHTML = '<a href="#espacos">Início</a> <span aria-hidden="true">/</span> <span>Meus eventos</span>';
       $('#titulo-pagina').textContent = 'Meus eventos';
-      $('#numeros').textContent = [`${evs.length} ${evs.length === 1 ? 'evento' : 'eventos'}`,
+      $('#numeros').textContent = eventosTrancados() && !evs.length ? 'Protegidos pela chave de edição' : [`${evs.length} ${evs.length === 1 ? 'evento' : 'eventos'}`,
         prox ? `próximo ${diasAte(prox.data) === 0 ? 'hoje' : `em ${diasAte(prox.data)} dias`}` : null,
         contratados ? `${contratados} ${contratados === 1 ? 'fornecedor contratado' : 'fornecedores contratados'}` : null].filter(Boolean).join(' · ');
       return;
@@ -1169,7 +1169,7 @@
     d.innerHTML = `<div class="folha-corpo">
       <h2>Salvar na nuvem</h2>
       ${API
-        ? `<p>Visitas, cadastros e edições são salvos direto na nuvem, sem chave, e aparecem em qualquer aparelho. Os eventos também. A chave de edição só é pedida para <strong>excluir</strong> (pergunte a quem cuida do site).</p>
+        ? `<p>Visitas, cadastros e edições do catálogo são salvos direto na nuvem, sem chave, e aparecem em qualquer aparelho. A chave de edição é pedida para <strong>excluir</strong> e para abrir os <strong>eventos</strong>, que ficam protegidos porque têm contatos, convidados e orçamento (pergunte a quem cuida do site).</p>
            <label class="campo"><span>Chave de edição</span><input id="in-chave" type="password" autocomplete="off" value="${esc(S.chave)}" placeholder="Digite a chave"></label>
            <div class="acoes"><button class="btn primario" data-acao="salvar-chave">${S.chave ? 'Trocar chave' : 'Guardar chave'}</button>${S.chave ? '<button class="btn" data-acao="esquecer-chave">Sair</button>' : ''}</div>`
         : `<p>A nuvem não está configurada neste site.</p>`}
@@ -1196,7 +1196,8 @@
     toast('Pronto! Chave guardada neste aparelho.');
     $('#config').close();
     sincronizar();
-    sincronizarEventos();
+    await carregarEventos();
+    renderTudo();
   }
   function exportar() {
     const blob = new Blob([JSON.stringify({ exportado_em: new Date().toISOString(), visitas: S.visitas }, null, 2)], { type: 'application/json' });
@@ -1776,8 +1777,8 @@
     }
     if ((b = t.closest('[data-acao]'))) {
       const a = b.dataset.acao;
-      if (a === 'novo-local') { if (S.secao === 'eventos') abrirEditorEvento(null); else abrirEditor(null, S.secao); }
-      if (a === 'novo-evento') abrirEditorEvento(null);
+      if (a === 'novo-local') { if (S.secao === 'eventos') { if (!pedeChaveParaEventos()) abrirEditorEvento(null); } else abrirEditor(null, S.secao); }
+      if (a === 'novo-evento' && !pedeChaveParaEventos()) abrirEditorEvento(null);
       if (a === 'editar-evento') abrirEditorEvento(S.paginaEv);
       if (a === 'remover-evento') removerEvento();
       if (a === 'imprimir') window.print();
@@ -1815,7 +1816,7 @@
         toast(`Convidados do evento: ${L.adultos} adultos e ${L.criancas} crianças.`);
       }
       if (a === 'pick-cadastrar') { const cat = PK.cat; $('#picker').close(); abrirEditor(null, cat); ED.addEv = S.paginaEv; }
-      if (a === 'pick-novo-evento') { const it = PK.itemId; $('#picker').close(); abrirEditorEvento(null); ED.addItem = it; }
+      if (a === 'pick-novo-evento') { const it = PK.itemId; $('#picker').close(); if (!pedeChaveParaEventos()) { abrirEditorEvento(null); ED.addItem = it; } }
       if (a === 'cancelar-editor') fecharEditor();
       if (a === 'remover-local') removerLocal();
       if (a === 'add-linha') {
@@ -1839,7 +1840,7 @@
       if (a === 'salvar-chave') salvarChave();
       if (a === 'usar-local') pedirLocal();
       if (a === 'abrir-config') abrirConfig();
-      if (a === 'esquecer-chave') { S.chave = ''; lsSet(LS.chave, ''); toast('Você saiu. Para excluir, entre com a chave de novo.'); $('#config').close(); atualizarSync(); }
+      if (a === 'esquecer-chave') { S.chave = ''; lsSet(LS.chave, ''); esquecerEventosDaNuvem(); toast('Você saiu. Os eventos só abrem com a chave.'); $('#config').close(); atualizarSync(); renderTudo(); }
       if (a === 'exportar') exportar();
       return;
     }
@@ -2049,7 +2050,23 @@
     .sort((a, b) => (a.data || '9999').localeCompare(b.data || '9999') || (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
   const eventosCom = (id) => eventosAtivos().flatMap((ev) => (ev.escolhas || []).filter((e) => e.id === id).map((e) => ({ ev, esc: e })));
   const privTxt = () => (!API ? 'Nuvem não configurada neste site.'
-    : 'Os eventos ficam na nuvem e aparecem para quem abrir o site. A chave de edição só é pedida para excluir.');
+    : 'Os eventos ficam na nuvem e só abrem com a chave de edição. Quem recebe o convite vê apenas o convite.');
+  // Sem chave não há eventos: some a cópia que este aparelho tenha guardado da nuvem (o que ainda não subiu fica).
+  const eventosTrancados = () => !!API && !S.chave;
+  function esquecerEventosDaNuvem() {
+    for (const id of Object.keys(S.eventos)) if (!S.evPend.has(id)) delete S.eventos[id];
+    S.rsvp = {}; S.rsvpPedido = {};
+    lsSet(LS.eventos, S.eventos);
+  }
+  const trancaEventosHtml = () => `<div class="vazio"><h3>Eventos protegidos</h3>
+    <p>Os eventos têm contatos, convidados e orçamento, por isso só abrem com a chave de edição. Quem recebe um convite vê apenas o convite.</p>
+    <p><button type="button" class="btn primario" data-acao="abrir-config">${ic('nuvem')}Entrar com a chave</button></p></div>`;
+  function pedeChaveParaEventos() {
+    if (!eventosTrancados()) return false;
+    toast('Para ver e criar eventos, entre com a chave de edição.');
+    if (!$('#config').open) abrirConfig();
+    return true;
+  }
 
   // Guardar na nuvem (com cópia de trabalho no navegador para não perder nada sem conexão).
   let timerEv = null;
@@ -2062,13 +2079,14 @@
     if (render) renderTudo();
   }
   async function sincronizarEventos() {
-    if (!API || !S.evPend.size) return;
+    if (!API || !S.chave || !S.evPend.size) return;
     for (const id of [...S.evPend]) {
       try {
+        if (!S.eventos[id]) { S.evPend.delete(id); continue; }
         const r = await fetch(`${API}/dados/eventos/${encodeURIComponent(id)}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json', ...(S.eventos[id].removido && S.chave ? { 'X-Chave': S.chave } : {}) }, body: JSON.stringify(S.eventos[id]),
+          method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Chave': S.chave }, body: JSON.stringify(S.eventos[id]),
         });
-        if (r.status === 401) { toast('Chave de edição recusada. O evento não foi excluído na nuvem.'); break; }
+        if (r.status === 401) { toast('Chave de edição recusada. O evento ficou guardado só neste aparelho até você entrar de novo.'); break; }
         if (!r.ok) throw new Error(r.status);
         S.evPend.delete(id);
       } catch { /* tenta de novo depois */ }
@@ -2077,8 +2095,10 @@
   }
   async function carregarEventos() {
     if (!API) return;
+    if (!S.chave) { esquecerEventosDaNuvem(); return; }
     try {
-      const r = await fetch(`${API}/dados/eventos`, { cache: 'no-store' });
+      const r = await fetch(`${API}/dados/eventos`, { cache: 'no-store', headers: { 'X-Chave': S.chave } });
+      if (r.status === 401) { toast('Chave de edição recusada. Entre de novo para ver os eventos.'); return; }
       if (!r.ok) throw new Error(r.status);
       for (const { id, dados, atualizado_em: em } of await r.json()) {
         const loc = S.eventos[id];
@@ -2142,6 +2162,11 @@
     </article>`;
   }
   function renderEventos() {
+    if (eventosTrancados() && !eventosAtivos().length) {
+      $('#aplicados').innerHTML = '';
+      $('#lista').innerHTML = trancaEventosHtml();
+      return;
+    }
     const evs = eventosAtivos();
     $('#aplicados').innerHTML = `<span><strong>${evs.length}</strong> ${evs.length === 1 ? 'evento' : 'eventos'}</span><span class="esp"></span>
       <button type="button" class="btn primario" data-acao="novo-evento">${ic('mais')}Novo evento</button>`;
@@ -2188,9 +2213,9 @@
   }
   const rsvpsDe = (id) => S.rsvp[id] || [];
   async function carregarRsvp(id, { avisar = false } = {}) {
-    if (!API || !id) return;
+    if (!API || !id || !S.chave) return;
     try {
-      const r = await fetch(`${API}/dados/confirmacoes?evento=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      const r = await fetch(`${API}/dados/confirmacoes?evento=${encodeURIComponent(id)}`, { cache: 'no-store', headers: { 'X-Chave': S.chave } });
       if (!r.ok) throw new Error(r.status);
       S.rsvp[id] = (await r.json()).map((x) => ({ ...x.dados, id: x.id })).filter((x) => !x.removido && x.evento === id);
       if (avisar) toast(`${plural(S.rsvp[id].length, 'resposta', 'respostas')}.`);
@@ -2206,7 +2231,7 @@
     try {
       const { id, ...dados } = reg;
       const r = await fetch(`${API}/dados/confirmacoes/${encodeURIComponent(id)}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados),
+        method: 'PUT', headers: { 'Content-Type': 'application/json', ...(S.chave ? { 'X-Chave': S.chave } : {}) }, body: JSON.stringify(dados),
       });
       if (!r.ok) throw new Error(r.status);
     } catch { toast('Não consegui salvar a resposta na nuvem. Tente de novo.'); }
@@ -3354,6 +3379,7 @@
   function renderPagina() {
     const el = $('#pagina');
     const bruto = S.eventos[S.paginaEv];
+    if ((!bruto || bruto.removido) && eventosTrancados()) { el.innerHTML = trancaEventosHtml(); return; }
     if (!bruto || bruto.removido) {
       el.innerHTML = `<div class="vazio"><h3>Evento não encontrado</h3><p>Ele pode ter sido excluído.</p>
         <p><a class="btn" href="#eventos">Ver eventos</a></p></div>`;

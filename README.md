@@ -14,7 +14,9 @@ Os campos de cada categoria vieram da pesquisa em [docs/pesquisa-atributos.md](d
 
 Site: https://geisbelly.github.io/locais-eventos-palmas/
 
-Sem login para ver o catálogo. Cadastrar, editar e gravar avaliações também não pedem chave: tudo é salvo direto na nuvem. Os **eventos** seguem a mesma regra e aparecem para quem abrir o site. A **chave de edição** (ícone de nuvem) só é pedida para **excluir** um cadastro ou um evento. Não existe modo de salvar só no aparelho; o navegador guarda apenas uma cópia para reenviar se a conexão cair.
+Sem login para ver o catálogo. Cadastrar, editar e gravar avaliações também não pedem chave: tudo é salvo direto na nuvem. A **chave de edição** (ícone de nuvem) é pedida para **excluir** um cadastro e para abrir os **eventos**.
+
+Os eventos têm contatos, lista de convidados, idades, orçamento e gastos, por isso a API só entrega e grava eventos e a lista de respostas para quem manda a chave. Sem a chave, o site some com a cópia que o navegador tenha guardado. O convite usa `GET /convite/:evento`, que devolve só o que o convidado vê: título, data, horário, tema, quem organiza, os campos do convite, os presentes (com quais já foram reservados, sem dizer por quem) e, quando o link traz `c=`, o nome e os lugares daquele convidado. O convidado grava a própria resposta sem chave, mas só para um evento que existe, sem excluir e sem mudar de evento. Não existe modo de salvar só no aparelho; o navegador guarda apenas uma cópia para reenviar se a conexão cair.
 
 ## Onde ficam os dados
 
