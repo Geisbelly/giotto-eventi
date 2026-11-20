@@ -1806,10 +1806,11 @@
       const ev = evAtual(); const lista = b.dataset.evAdd;
       const nova = LINHA_VAZIA[lista]();
       if (lista === 'convidados') { S.convF = 'todos'; S.convBusca = ''; S.convAberto.add('c:' + nova.id); }
-      ev[lista].push(nova);
+      const arr = listaDoEvento(ev, lista);
+      arr.push(nova);
       salvarEvento(ev);
-      const ult = document.querySelector(`[data-evc^="${lista}.${ev[lista].length - 1}."]:not([type="checkbox"]):not([type="date"]):not([type="time"])`)
-        || document.querySelector(`[data-evc^="${lista}.${ev[lista].length - 1}."]`);
+      const ult = document.querySelector(`[data-evc^="${lista}.${arr.length - 1}."]:not([type="checkbox"]):not([type="date"]):not([type="time"]):not(select)`)
+        || document.querySelector(`[data-evc^="${lista}.${arr.length - 1}."]`);
       if (ult) ult.focus();
       return;
     }
@@ -1834,7 +1835,8 @@
     }
     if ((b = t.closest('[data-ev-tirar]'))) {
       const ev = evAtual(); const [lista, i] = b.dataset.evTirar.split(':');
-      ev[lista].splice(Number(i), 1); salvarEvento(ev);
+      if (lista === 'convite.paginas' && !confirm('Tirar esta página do convite?')) return;
+      listaDoEvento(ev, lista).splice(Number(i), 1); salvarEvento(ev);
       return;
     }
     if ((b = t.closest('[data-tirar-linha]'))) {
@@ -1945,7 +1947,7 @@
       if (t.dataset.evc === 'convite.modelo_html' && String(v).length > 200000) { toast('O HTML passou de 200.000 caracteres. Tire imagens embutidas e use links.'); return; }
       setCaminho(ev, t.dataset.evc, v);
       // Mudar a categoria muda o agrupamento do orçamento: redesenha a página.
-      const estrutura = t.tagName === 'SELECT' || tp === 'bool' || /^gastos\.\d+\.categoria$/.test(t.dataset.evc) || /^escolhas\.\d+\.pessoas$|^buffet_isento_ate$|^convite\.prazo$|^convidados\.\d+\.lugares$/.test(t.dataset.evc);
+      const estrutura = t.tagName === 'SELECT' || tp === 'bool' || /^gastos\.\d+\.categoria$/.test(t.dataset.evc) || /^escolhas\.\d+\.pessoas$|^buffet_isento_ate$|^convite\.prazo$|^convidados\.\d+\.lugares$|^convite\.paginas\.\d+\.titulo$/.test(t.dataset.evc);
       salvarEvento(ev, { render: estrutura });
       if (!estrutura && /^(itens_festa\.|mesas$|pessoas_mesa$)/.test(t.dataset.evc)) { const it = $('#itens-corpo'); if (it) it.innerHTML = itensHtml(ev); }
       if (!estrutura) {
@@ -2290,6 +2292,20 @@
 
   /* ---- Convites e confirmações ---- */
   const idCurto = () => Math.random().toString(36).slice(2, 8);
+  const slugPagina = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  // Mesma regra do convite.html (paginasDe): avisos primeiro, depois as páginas com título e conteúdo, sem repetir endereço.
+  function rotaPagina(cv, i) {
+    const usadas = new Set(['rsvp', 'presentes', 'mapa', 'app']);
+    const unica = (b) => { let r = b, n = 2; while (usadas.has(r)) r = `${b}-${n++}`; usadas.add(r); return r; };
+    if (linhasAviso(cv.avisos).length) unica('avisos');
+    let rota = '';
+    (cv.paginas || []).forEach((p, j) => {
+      if (!p || !String(p.titulo || '').trim() || (!String(p.texto || '').trim() && j !== i)) return;
+      const r = unica(slugPagina(p.titulo) || `pagina-${p.id}`);
+      if (j === i) rota = r;
+    });
+    return rota;
+  }
   const linhasAviso = (t) => String(t || '').split('\n').map((x) => x.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
   const ESTILOS_CONV = [['ouro', 'Dourado'], ['rosa', 'Rosa'], ['azul', 'Azul'], ['verde', 'Verde'], ['lilas', 'Lilás'], ['sol', 'Laranja']];
   const RESP = [['sim', 'Confirmado'], ['talvez', 'Talvez'], ['nao', 'Não vai']];
@@ -2633,7 +2649,7 @@
         ${cv.modelo === 'html' ? `<div class="modelo-html">
           <p class="ajuda">Cole aqui o HTML do convite com o seu design. Onde quiser os dados do evento, escreva os campos entre chaves duplas:
             <code>{{titulo}}</code> <code>{{ola}}</code> <code>{{data}}</code> <code>{{dia}}</code> <code>{{mes}}</code> <code>{{horario}}</code> <code>{{local}}</code> <code>{{endereco}}</code> <code>{{tema}}</code> <code>{{mensagem}}</code> <code>{{prazo}}</code> <code>{{faltam}}</code>.
-            E coloque os blocos prontos onde eles devem aparecer: <code>{{confirmacao}}</code> (confirmação de presença), <code>{{mapa}}</code>, <code>{{agenda}}</code>, <code>{{presentes}}</code>, <code>{{avisos}}</code> (botão da página de avisos), <code>{{botao_confirmar}}</code> (botão que leva à confirmação) e <code>{{faltam}}</code> (contagem regressiva que se atualiza sozinha). Se o modelo não tiver o botão de confirmar nem o de avisos, eles entram logo depois da contagem; e uma barra fixa embaixo leva à confirmação.
+            E coloque os blocos prontos onde eles devem aparecer: <code>{{confirmacao}}</code> (confirmação de presença), <code>{{mapa}}</code>, <code>{{agenda}}</code>, <code>{{presentes}}</code>, <code>{{avisos}}</code> (botão da página de avisos), <code>{{paginas}}</code> (botões das outras páginas), <code>{{botao_confirmar}}</code> (botão que leva à confirmação) e <code>{{faltam}}</code> (contagem regressiva que se atualiza sozinha). Se o modelo não tiver o botão de confirmar nem o de avisos, eles entram logo depois da contagem; e uma barra fixa embaixo leva à confirmação.
             Os blocos usam a fonte e a cor do texto do seu HTML; as cores dos botões vêm das variáveis <code>--cor</code>, <code>--cor-escura</code>, <code>--cor-fundo</code> e <code>--linha</code> do seu CSS.
             Scripts não rodam no convite e imagens precisam ser links (https://…).</p>
           <div class="acoes-linha">
@@ -2654,11 +2670,34 @@
         </div>
         <p class="ajuda">Data, horário e tema vêm do evento (botão Editar). O local vem do espaço marcado com a estrela, se você não preencher aqui. O prazo de confirmação fica na aba Convidados.</p>
       </details>
-      <details class="conv-cfg" ${cv.avisos ? 'open' : ''}><summary>Avisos e instruções ${cv.avisos ? `<small>${plural(linhasAviso(cv.avisos).length, 'aviso', 'avisos')}</small>` : ''}</summary>
-        <p class="ajuda">Viram uma página própria no convite, aberta por um botão em destaque. Escreva um aviso por linha: o que levar, horário de chegada, estacionamento, traje, se tem piscina, regras do local…</p>
+      <details class="conv-cfg" ${cv.avisos ? 'open' : ''}><summary>Avisos e instruções ${cv.avisos ? `<small>${plural(linhasAviso(cv.avisos).filter((x) => !(/:$/.test(x) && x.length <= 80)).length || 1, 'aviso', 'avisos')}</small>` : ''}</summary>
+        <p class="ajuda">Viram uma página própria no convite (endereço <code>#avisos</code>), aberta por um botão em destaque. Escreva um aviso por linha: o que levar, horário de chegada, estacionamento, traje, se tem piscina, regras do local… Uma linha que termina em dois-pontos vira subtítulo.</p>
         <label class="campo"><span>Título da página</span><input data-evc="convite.avisos_titulo" maxlength="80" value="${esc(cv.avisos_titulo || '')}" placeholder="Avisos importantes"></label>
         <label class="campo"><span>Avisos (um por linha)</span><textarea data-evc="convite.avisos" rows="6" maxlength="3000" placeholder="Chegue até 15h30, a festa começa pontualmente.&#10;Tem piscina: leve roupa de banho e toalha para as crianças.&#10;Estacionamento dentro da chácara.">${esc(cv.avisos || '')}</textarea></label>
-        ${cv.modelo === 'html' ? '<p class="ajuda">No seu HTML, coloque <code>{{avisos}}</code> onde o botão deve aparecer. Sem ele, o botão fica antes da confirmação.</p>' : ''}
+        <details class="sub-cfg" ${cv.avisos_modelo_html ? 'open' : ''}><summary>HTML próprio desta página (opcional)</summary>
+          <textarea class="codigo" data-evc="convite.avisos_modelo_html" rows="8" spellcheck="false" autocapitalize="off" placeholder="Vazio = usa o modelo das páginas ou a aparência do convite">${esc(cv.avisos_modelo_html || '')}</textarea></details>
+        ${cv.modelo === 'html' ? '<p class="ajuda">No HTML do convite, coloque <code>{{avisos}}</code> onde o botão deve aparecer. Sem ele, o botão entra logo depois do botão de confirmar.</p>' : ''}
+      </details>
+      <details class="conv-cfg" ${(cv.paginas || []).length ? 'open' : ''}><summary>Outras páginas do convite ${(cv.paginas || []).length ? `<small>${plural(cv.paginas.length, 'página', 'páginas')}</small>` : ''}</summary>
+        <p class="ajuda">Crie páginas extras, cada uma com um botão no convite e endereço próprio: programação, cardápio, traje, hospedagem, como chegar de ônibus… Uma linha por item; linha que termina em dois-pontos vira subtítulo.</p>
+        <div class="paginas-cfg">${(cv.paginas || []).map((pg, i) => `<div class="pagina-cfg">
+          <div class="grade-2">
+            <label class="campo"><span>Título</span><input data-evc="convite.paginas.${i}.titulo" maxlength="80" value="${esc(pg.titulo || '')}" placeholder="ex.: Programação"></label>
+            <label class="campo"><span>Formato</span><select data-evc="convite.paginas.${i}.formato">${[['lista', 'Lista com marcadores'], ['numerada', 'Lista numerada'], ['texto', 'Texto corrido']].map(([k, r]) => `<option value="${k}" ${(pg.formato || 'lista') === k ? 'selected' : ''}>${r}</option>`).join('')}</select></label>
+          </div>
+          <label class="campo"><span>Conteúdo</span><textarea data-evc="convite.paginas.${i}.texto" rows="5" maxlength="4000" placeholder="15h30 Recepção&#10;16h Brincadeiras&#10;17h30 Parabéns">${esc(pg.texto || '')}</textarea></label>
+          <label class="campo"><span>Frase do botão (opcional)</span><input data-evc="convite.paginas.${i}.resumo" maxlength="80" value="${esc(pg.resumo || '')}" placeholder="Toque para abrir."></label>
+          <details class="sub-cfg" ${pg.modelo_html ? 'open' : ''}><summary>HTML próprio desta página (opcional)</summary>
+            <textarea class="codigo" data-evc="convite.paginas.${i}.modelo_html" rows="8" spellcheck="false" autocapitalize="off" placeholder="Vazio = usa o modelo das páginas ou a aparência do convite">${esc(pg.modelo_html || '')}</textarea></details>
+          <div class="pagina-cfg-rodape"><small class="meta">${pg.titulo ? `Endereço: <code>#${esc(rotaPagina(cv, i))}</code>` : 'Dê um título para a página aparecer.'}</small>
+            <button type="button" class="btn ghost mini perigo" data-ev-tirar="convite.paginas:${i}">Tirar página</button></div>
+        </div>`).join('')}</div>
+        <button type="button" class="btn ghost add-linha" data-ev-add="convite.paginas">${ic('mais')}Adicionar página</button>
+        ${cv.modelo === 'html' ? '<p class="ajuda">No HTML do convite, <code>{{paginas}}</code> marca onde ficam os botões destas páginas. Sem ele, eles entram logo depois do botão de avisos.</p>' : ''}
+      </details>
+      <details class="conv-cfg" ${cv.modelo_paginas ? 'open' : ''}><summary>Aparência das páginas ${cv.modelo_paginas ? '<small>HTML próprio</small>' : ''}</summary>
+        <p class="ajuda">Sem nada aqui, as páginas usam o fundo, as cores e a fonte do título do convite. Para um design livre, cole um HTML que vale para todas as páginas (cada página ainda pode ter o seu). Campos: <code>{{titulo}}</code> (da página), <code>{{conteudo}}</code> (os itens), <code>{{voltar}}</code> (botão de voltar), <code>{{evento}}</code>, <code>{{data}}</code>, <code>{{quando}}</code>, <code>{{horario}}</code>, <code>{{local}}</code>, <code>{{ola}}</code>. Sem <code>{{voltar}}</code>, o botão entra no topo. Os itens usam as variáveis <code>--cor</code>, <code>--cor-escura</code> e <code>--cor-fundo</code> do seu CSS; scripts não rodam.</p>
+        <textarea class="codigo" data-evc="convite.modelo_paginas" rows="10" spellcheck="false" autocapitalize="off" placeholder="<style>body { background: #f7f3eb; --cor: #d98c43; } .caixa { max-width: 520px; margin: 0 auto; padding: 24px 16px; }</style>&#10;<div class=&quot;caixa&quot;>{{voltar}}<h1>{{titulo}}</h1><p>{{evento}} · {{quando}}</p>{{conteudo}}</div>">${esc(cv.modelo_paginas || '')}</textarea>
       </details>
       <details class="conv-cfg" id="rota-cfg" ${ROTA.aberta ? 'open' : ''}><summary>Local e rota no mapa ${destinoConvite(ev) ? `<small>${(cv.rota || []).length > 1 ? 'rota desenhada' : 'local marcado'}</small>` : ''}</summary>
         <p class="ajuda">O convite mostra o mapa com o local e botões para abrir no GPS (Google Maps ou Waze). Se o GPS costuma errar o caminho (condomínio, chácara, estrada de terra), desenhe a rota certa: toque em <strong>Desenhar rota</strong> e vá tocando no mapa, do ponto de partida até o local. O botão do convite manda o GPS passar pela sua rota.</p>
@@ -3615,7 +3654,15 @@
   }
 
   /* ---- Edição na própria página ---- */
-  const LINHA_VAZIA = { itens_festa: () => novoItemFesta(), presentes: () => ({ id: idCurto(), nome: '', link: '' }), convidados: () => ({ id: idCurto(), nome: '', telefone: '', lugares: null }), gastos: novoGasto, tarefas: () => ({ texto: '', prazo: '', feito: false }), cronograma: () => ({ hora: '', oque: '' }) };
+  const LINHA_VAZIA = { itens_festa: () => novoItemFesta(), presentes: () => ({ id: idCurto(), nome: '', link: '' }), convidados: () => ({ id: idCurto(), nome: '', telefone: '', lugares: null }), gastos: novoGasto, tarefas: () => ({ texto: '', prazo: '', feito: false }), cronograma: () => ({ hora: '', oque: '' }), 'convite.paginas': () => ({ id: idCurto(), titulo: '', texto: '', formato: 'lista', resumo: '' }) };
+  // Lista dentro do evento pelo caminho ("presentes", "convite.paginas"); cria a lista se ainda não existir.
+  function listaDoEvento(ev, caminho) {
+    const ps = caminho.split('.'); let o = ev;
+    for (const k of ps.slice(0, -1)) o = o[k] = (o[k] && typeof o[k] === 'object') ? o[k] : {};
+    const u = ps[ps.length - 1];
+    if (!Array.isArray(o[u])) o[u] = [];
+    return o[u];
+  }
   function evAtual() { return S.eventos[S.paginaEv] ? evCompleto(S.eventos[S.paginaEv]) : null; }
   function setCaminho(obj, caminho, v) {
     const ps = caminho.split('.');

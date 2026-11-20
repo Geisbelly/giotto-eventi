@@ -1,4 +1,4 @@
-# Eventos em Palmas - TO
+# Giotto Eventi
 
 Catálogo para eventos em Palmas em cinco seções: **Espaços**, **Buffet e comida**, **Brinquedos e recreação**, **Serviços** (foto, DJ, decoração, cerimonial…) e **Aluguéis e barraquinhas** (pipoca, algodão-doce, food truck, mesas, tendas…). Cada cadastro tem valores com condição, o que está incluso, detalhes da categoria, pagamento, cancelamento, contato e fotos. Dá para avaliar cada opção (nota por critério, prós, contras, orçamento recebido) e comparar até 4 lado a lado.
 
@@ -14,11 +14,11 @@ A ficha também mostra um mapa (OpenStreetMap) com o ponto em `coordenadas` e, s
 
 Os campos de cada categoria vieram da pesquisa em [docs/pesquisa-atributos.md](docs/pesquisa-atributos.md).
 
-Site: https://geisbelly.github.io/locais-eventos-palmas/
+Site: https://geisbelly.github.io/giotto-eventi/ (o endereço antigo, `geisbelly.github.io/locais-eventos-palmas/`, redireciona para cá, inclusive os links de convite já enviados)
 
 Sem login para ver o catálogo. Cadastrar, editar e gravar avaliações também não pedem chave: tudo é salvo direto na nuvem. A **chave de edição** (ícone de nuvem) é pedida para **excluir** um cadastro e para abrir os **eventos**.
 
-O convite tem uma página de **avisos e instruções** (`convite.avisos`, um por linha, e `convite.avisos_titulo`), aberta por um botão em destaque; no modelo próprio o botão vai onde estiver `{{avisos}}`. Tirar um convidado da lista também apaga a resposta dele.
+O convite tem uma página de **avisos e instruções** (`convite.avisos`, um por linha, e `convite.avisos_titulo`), aberta por um botão em destaque; no modelo próprio o botão vai onde estiver `{{avisos}}`. Também dá para criar **outras páginas** (`convite.paginas`: título, conteúdo uma linha por item, formato lista, lista numerada ou texto), cada uma com endereço próprio (`#programacao`, `#cardapio`…) e botão no convite (`{{paginas}}` no modelo próprio). As páginas herdam o fundo, as cores e a fonte do convite; para um design livre há o HTML comum das páginas (`convite.modelo_paginas`) e o HTML de cada página (`modelo_html`, ou `convite.avisos_modelo_html` para os avisos), com os campos `{{titulo}}`, `{{conteudo}}`, `{{voltar}}`, `{{evento}}`, `{{quando}}` e os do convite. Tirar um convidado da lista também apaga a resposta dele.
 
 No convite, a contagem regressiva (`{{faltam}}`) mostra dias, horas e minutos até o começo da festa e se atualiza sozinha. Logo depois dela vem o botão **Confirmar presença** (`{{botao_confirmar}}` no modelo próprio; sem o campo, ele entra depois da contagem) e, enquanto a confirmação não aparece na tela, uma barra fixa embaixo leva até ela. Depois que a pessoa responde, o botão vira **Ver minha resposta** e a barra some.
 

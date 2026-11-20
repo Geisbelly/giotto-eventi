@@ -1511,3 +1511,12 @@ button.cnum-card:hover { border-color: var(--ouro); }
 .esc-nome small .esc-loja { font-size: inherit; font-weight: 600; color: var(--suave); }
 .esc-nome .esc-desc { margin-top: 2px; color: var(--suave-forte, var(--suave)); }
 .mini.perigo { color: var(--vermelho); }
+
+/* Páginas do convite (avisos e páginas extras) */
+.conv-cfg .ajuda code, .conv-cfg .meta code { font-size: .82em; background: var(--ouro-fundo); padding: 0 4px; border-radius: 4px; }
+.paginas-cfg { display: flex; flex-direction: column; gap: 12px; margin: 10px 0; }
+.pagina-cfg { border: 1px solid var(--linha); border-radius: 12px; padding: 12px; background: var(--fundo-2, transparent); }
+.pagina-cfg .grade-2 { margin-top: 0; }
+.pagina-cfg-rodape { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.sub-cfg { margin: 4px 0 10px; }
+.sub-cfg summary { cursor: pointer; font-size: .9rem; color: var(--suave, inherit); padding: 4px 0; font-weight: 500; }
