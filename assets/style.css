@@ -1473,3 +1473,41 @@ button.cnum-card:hover { border-color: var(--ouro); }
 .esc-descartados > summary { cursor: pointer; font-size: .84rem; color: var(--suave); padding: 4px 0; }
 .esc-descartados > summary:hover { color: var(--tinta); }
 @media (max-width: 640px) { .base-festa .campo { flex-basis: 100%; } }
+
+/* Ficha de um brinquedo ou item (abre ao tocar no brinquedo, não na loja) */
+.ficha-obj { display: flex; flex-direction: column; gap: 14px; }
+.fo-foto { margin: -18px -20px 0; background: var(--bg-2); }
+.fo-foto img { display: block; width: 100%; max-height: 62vh; object-fit: contain; background: var(--bg-2); }
+.fo-foto figcaption { padding: 6px 20px; font-size: .78rem; color: var(--fraco); }
+.fo-foto figcaption a { color: inherit; }
+.fo-cab { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.fo-cab .sobretitulo { margin: 0; }
+.fo-preco { margin: 0; font-size: 1.5rem; }
+.fo-preco small { font-size: .85rem; color: var(--suave); font-weight: 500; }
+.fo-preco.consulta strong { font-size: 1.05rem; color: var(--suave); }
+.fo-desc { margin: 0; line-height: 1.55; color: var(--tinta); }
+.fo-dados { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0; }
+.fo-dados div { padding: 10px 12px; background: var(--card); border: 1px solid var(--linha); border-radius: 12px; min-width: 0; }
+.fo-dados dt { font-size: .78rem; color: var(--suave); }
+.fo-dados dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.fo-loja { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--card); border: 1px solid var(--linha); border-radius: 14px; }
+.fo-loja > span { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.fo-loja small { color: var(--suave); font-size: .8rem; }
+.fo-loja .link-btn { font-weight: 600; font-size: 1rem; text-align: left; }
+.ficha-obj .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.ficha-obj .acoes .btn { flex: 1 1 160px; justify-content: center; }
+.fo-sub { margin: 8px 0 0; font-family: var(--titulo); font-size: 1.15rem; }
+.fo-outras { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.fo-outras button { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--card); border: 1px solid var(--linha); border-radius: 12px; cursor: pointer; }
+.fo-outras button:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; }
+.fo-outras span:not(.fo-v):not(.mini-capa) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fo-outras small { color: var(--suave); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fo-v { font-weight: 600; white-space: nowrap; }
+.obj-foto-btn { all: unset; cursor: pointer; display: block; border-radius: 10px; }
+.obj-foto-btn:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; }
+.obj-nome { all: unset; cursor: pointer; font-weight: 600; color: var(--tinta); overflow-wrap: anywhere; }
+.obj-nome:hover { color: var(--ouro-texto); text-decoration: underline; }
+.obj-nome:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; border-radius: 4px; }
+.esc-nome small .esc-loja { font-size: inherit; font-weight: 600; color: var(--suave); }
+.esc-nome .esc-desc { margin-top: 2px; color: var(--suave-forte, var(--suave)); }
+.mini.perigo { color: var(--vermelho); }

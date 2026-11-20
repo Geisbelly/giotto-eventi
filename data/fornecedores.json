@@ -737,7 +737,7 @@
       ],
       "conferido_em": "2026-11-13",
       "status": "Informado pelo local",
-      "atualizado_em": "2026-11-14T01:43:35Z",
+      "atualizado_em": "2026-11-20T14:16:54Z",
       "detalhes": {},
       "itens": {
         "monitor": 1
@@ -982,7 +982,14 @@
           "unidade": "por evento",
           "qtd": null,
           "obs": "Mesa de 1,63 m de comprimento, 0,88 m de largura e 0,80 m de altura. Valor do orçamento de 14/10/2026",
-          "duracao": "5 horas"
+          "duracao": "5 horas",
+          "foto": {
+            "url": "fotos/brinque-ja/wa-air-game.jpg",
+            "credito": {
+              "nome": "Catálogo do WhatsApp",
+              "url": "https://wa.me/c/556384320373"
+            }
+          }
         },
         {
           "nome": "Pebolim",
@@ -992,7 +999,14 @@
           "unidade": "por evento",
           "qtd": null,
           "obs": "Mesa de 1,38 m de comprimento, 1,17 m de largura e 0,89 m de altura. Valor do orçamento de 14/10/2026",
-          "duracao": "5 horas"
+          "duracao": "5 horas",
+          "foto": {
+            "url": "fotos/brinque-ja/wa-pebolim.jpg",
+            "credito": {
+              "nome": "Catálogo do WhatsApp",
+              "url": "https://wa.me/c/556384320373"
+            }
+          }
         },
         {
           "nome": "Piscina de bolinhas inflável",

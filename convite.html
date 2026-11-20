@@ -93,6 +93,10 @@
     .rota .nota { font-size: .8rem; color: var(--suave); margin: 8px 0 0; text-align: center; }
     @media print { .gps, .rota .nota { display: none; } }
     .falta { margin: 4px 0 0; font-size: .95rem; color: var(--cor-escura); }
+    .btn-avisos { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 20px; padding: 14px 16px; border: 2px solid var(--cor); border-radius: 14px; background: var(--cor-fundo); color: var(--cor-escura); font: 600 1rem var(--texto); text-decoration: none; text-align: left; }
+    .btn-avisos svg { width: 26px; height: 26px; flex: none; }
+    .btn-avisos small { display: block; font-weight: 500; font-size: .85rem; opacity: .85; }
+    .btn-avisos .seta { margin-left: auto; font-size: 1.6rem; line-height: 1; }
     .falta strong { font-size: 1.15rem; }
     .agenda { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0 0; }
     .agenda a, .agenda button { border: 1px solid var(--linha); border-radius: 999px; padding: 8px 14px; font: 600 .88rem var(--texto); color: var(--cor-escura); background: none; text-decoration: none; cursor: pointer; }
@@ -304,7 +308,7 @@
     }
     function renderProprio(ev, vals, x) {
       let html = String(ev.convite.modelo_html);
-      const blocos = { confirmacao: 'rsvp', mapa: 'mapa', agenda: 'agenda', presentes: 'presentes' };
+      const blocos = { confirmacao: 'rsvp', mapa: 'mapa', agenda: 'agenda', presentes: 'presentes', avisos: 'avisos' };
       html = html.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, k) => {
         k = k.toLowerCase();
         if (blocos[k]) return `<div data-convite="${blocos[k]}"></div>`;
@@ -316,6 +320,10 @@
       limparModelo(doc);
       tirarVazios(doc);
       if (!doc.querySelector('[data-convite="rsvp"]')) { const r = doc.createElement('div'); r.dataset.convite = 'rsvp'; doc.body.appendChild(r); }
+      if (!doc.querySelector('[data-convite="avisos"]') && avisosDe(ev.convite).length) {
+        const a = doc.createElement('div'); a.dataset.convite = 'avisos';
+        const r = doc.querySelector('[data-convite="rsvp"]'); r.parentNode.insertBefore(a, r);
+      }
       cssDosBlocos();
       document.getElementById('base-css').remove();
       doc.head.querySelectorAll('style,link').forEach((e) => document.head.appendChild(e));
@@ -327,6 +335,7 @@
         mapa: () => (x.dest ? rotaHtml(x.cv, x.dest, x.rota) : ''),
         agenda: () => agendaHtml(ev, vals.titulo, x.ondeTxt),
         presentes: () => `<div id="presentes">${presentesHtml(ev, (lsGet() || {}).id)}</div>`,
+        avisos: () => avisosBotao(ev.convite),
       };
       document.querySelectorAll('[data-convite]').forEach((el) => {
         const f = conteudo[el.dataset.convite];
@@ -337,6 +346,64 @@
       });
     }
     function erro(msg) { app.innerHTML = `<p class="erro-total">${esc(msg)}</p>`; }
+
+    // Avisos e instruções: um por linha no evento; viram uma página própria do convite (#avisos).
+    const avisosDe = (cv) => String((cv && cv.avisos) || '').split('\n').map((x) => x.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
+    const avisosTit = (cv) => String((cv && cv.avisos_titulo) || '').trim() || 'Avisos importantes';
+    const icAviso = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>';
+    function avisosBotao(cv) {
+      const n = avisosDe(cv).length;
+      if (!n) return '';
+      return `<a class="btn-avisos" href="#avisos">${icAviso}<span>${esc(avisosTit(cv))}<small>${n === 1 ? '1 aviso' : `${n} avisos`} de quem convida. Toque para ler.</small></span><span class="seta" aria-hidden="true">›</span></a>`;
+    }
+    function paginaAvisos(ev, titulo, quando) {
+      const cv = ev.convite || {};
+      const ls = avisosDe(cv);
+      if (!ls.length) return;
+      const host = document.createElement('div');
+      host.id = 'pg-avisos';
+      host.hidden = true;
+      const sr = host.attachShadow({ mode: 'open' });
+      sr.innerHTML = `<style>
+        :host { position: fixed; inset: 0; z-index: 1000; display: block; }
+        :host([hidden]) { display: none; }
+        * { box-sizing: border-box; }
+        .pg { height: 100%; overflow-y: auto; background: var(--papel, #fffdf9); color: var(--tinta, #2a241d); font-family: var(--texto, 'Inter', system-ui, sans-serif); }
+        .topo { position: sticky; top: 0; background: var(--cor-fundo, #f7ecd9); border-bottom: 1px solid var(--linha, #e6ddd0); padding: 10px 16px; }
+        a { color: var(--cor-escura, #8a5a12); font-weight: 600; text-decoration: none; }
+        .topo a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+        .corpo { max-width: 620px; margin: 0 auto; padding: 24px 20px 48px; }
+        .sob { margin: 0 0 6px; color: var(--suave, #6f665b); font-size: .9rem; }
+        h1 { font-family: var(--titulo, 'Fraunces', Georgia, serif); font-weight: 650; font-size: clamp(1.6rem, 6vw, 2.1rem); line-height: 1.12; margin: 0 0 20px; color: var(--cor-escura, #8a5a12); }
+        ol { list-style: none; counter-reset: av; margin: 0 0 28px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        li { counter-increment: av; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--linha, #e6ddd0); border-radius: 14px; background: #fff; line-height: 1.5; overflow-wrap: anywhere; }
+        li::before { content: counter(av); flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--cor-fundo, #f7ecd9); color: var(--cor-escura, #8a5a12); font-weight: 700; font-size: .9rem; }
+        .volta { display: flex; justify-content: center; align-items: center; min-height: 48px; border-radius: 12px; background: var(--cor, #b4781f); color: #fff; }
+      </style>
+      <div class="pg" role="dialog" aria-modal="true" aria-labelledby="av-tit">
+        <div class="topo"><a href="#" data-volta>‹ Voltar ao convite</a></div>
+        <div class="corpo">
+          <p class="sob">${esc([titulo, quando].filter(Boolean).join(' · '))}</p>
+          <h1 id="av-tit">${esc(avisosTit(cv))}</h1>
+          <ol>${ls.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>
+          <a class="volta" href="#" data-volta>Voltar ao convite</a>
+        </div>
+      </div>`;
+      document.body.appendChild(host);
+      let y = 0;
+      const mostrar = () => {
+        const abrir = location.hash === '#avisos';
+        if (abrir && host.hidden) { y = window.scrollY; host.hidden = false; document.documentElement.style.overflow = 'hidden'; sr.querySelector('.pg').scrollTop = 0; sr.querySelector('[data-volta]').focus(); }
+        if (!abrir && !host.hidden) { host.hidden = true; document.documentElement.style.overflow = ''; window.scrollTo(0, y); }
+      };
+      sr.querySelectorAll('[data-volta]').forEach((a) => a.addEventListener('click', (e) => {
+        e.preventDefault();
+        history.replaceState(null, '', location.pathname + location.search);
+        mostrar();
+      }));
+      window.addEventListener('hashchange', mostrar);
+      mostrar();
+    }
 
     async function iniciar() {
       if (!evId || !/^[a-z0-9-]{1,80}$/.test(evId)) return erro('Este link de convite está incompleto. Peça um novo link a quem convidou.');
@@ -407,6 +474,7 @@
                 <span class="lado">${esc(horario || d.getFullYear())}</span></div>
               ${(() => { const h = new Date(); h.setHours(0, 0, 0, 0); const n = Math.round((d - h) / 864e5); return n > 1 ? `<p class="falta">Faltam <strong>${n}</strong> dias</p>` : n === 1 ? '<p class="falta"><strong>É amanhã!</strong></p>' : n === 0 ? '<p class="falta"><strong>É hoje!</strong></p>' : ''; })()}
               <p class="data-longa">${esc(`${SEMANA[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`)}${horario ? ` · ${esc(horario)}` : ''}</p>` : ''}
+            ${avisosBotao(cv)}
             ${local || endereco || dest ? `<div class="local">${local ? `<strong>${esc(local)}</strong>` : ''}${endereco ? `<span>${esc(endereco)}</span>` : ''}
               ${!dest && mapa ? `<a href="${esc(mapa)}" target="_blank" rel="noopener">Como chegar</a>` : ''}</div>` : ''}
             ${dest ? rotaHtml(cv, dest, rota) : ''}
@@ -424,6 +492,7 @@
       if (dest && $id('mapa')) mapaConvite(dest, rota);
       const ics = $id('ics');
       if (ics) ics.onclick = () => baixarIcs(ev, titulo, [local, endereco].filter(Boolean).join(', '));
+      paginaAvisos(ev, titulo, d ? `${d.getDate()} de ${MESES[d.getMonth()]}${horario ? `, ${horario}` : ''}` : '');
       formRsvp(ev, { convidado, nome, lugares, pedirIdade, pedirSexo, encerrado });
     }
 
