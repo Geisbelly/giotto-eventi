@@ -1696,6 +1696,9 @@
     if ((b = t.closest('[data-pag]'))) { irPagina(b.dataset.pag); return; }
     if ((b = t.closest('[data-visao]'))) { S.visao[S.secao] = b.dataset.visao; ui.visao = S.visao; lsSet(LS.ui, ui); renderLista(); return; }
     if ((b = t.closest('[data-ev-aba]'))) { irAbaEv(b.dataset.evAba); return; }
+    if ((b = t.closest('[data-ver-convite]')) && !e.ctrlKey && !e.metaKey && !e.shiftKey && (eventosTrancados() || S.evPend.has(S.paginaEv))) {
+      e.preventDefault(); verConvite(b); return;
+    }
     if ((b = t.closest('[data-ir-cat]'))) {
       const alvo = $('#cat-' + b.dataset.irCat); const nav = $('.ev-abas');
       if (alvo) window.scrollTo({ top: alvo.getBoundingClientRect().top + window.scrollY - (nav ? nav.getBoundingClientRect().bottom : 0) - 10, behavior: 'smooth' });
@@ -1904,6 +1907,7 @@
       if (a === 'salvar-chave') salvarChave();
       if (a === 'usar-local') pedirLocal();
       if (a === 'abrir-config') abrirConfig();
+      if (a === 'sinc-eventos') sincronizarEventos();
       if (a === 'esquecer-chave') { S.chave = ''; lsSet(LS.chave, ''); esquecerEventosDaNuvem(); toast('Você saiu. Os eventos só abrem com a chave.'); $('#config').close(); atualizarSync(); renderTudo(); }
       if (a === 'exportar') exportar();
       return;
@@ -2133,29 +2137,71 @@
   }
 
   // Guardar na nuvem (com cópia de trabalho no navegador para não perder nada sem conexão).
-  let timerEv = null;
+  let timerEv = null, avisouSemChave = false, falhaEv = false, sincEv = null;
   function salvarEvento(ev, { render = true } = {}) {
     ev.atualizado_em = new Date().toISOString();
     S.eventos[ev.id] = ev;
     lsSet(LS.eventos, S.eventos);
     if (API) { S.evPend.add(ev.id); lsSet(LS.evPend, [...S.evPend]); }
     clearTimeout(timerEv); timerEv = setTimeout(sincronizarEventos, 800);
-    if (render) renderTudo();
+    if (eventosTrancados() && !avisouSemChave) {
+      avisouSemChave = true;
+      toast('Alteração guardada só neste aparelho. Para aparecer no convite, entre com a chave de edição.');
+    }
+    if (render) renderTudo(); else atualizarFaixaSync();
   }
-  async function sincronizarEventos() {
-    if (!API || !S.chave || !S.evPend.size) return;
+  // Uma sincronização por vez; quem chamar no meio espera a que está rodando e roda de novo.
+  function sincronizarEventos() {
+    clearTimeout(timerEv);
+    sincEv = (sincEv || Promise.resolve()).then(sincronizarAgora, sincronizarAgora);
+    return sincEv;
+  }
+  async function sincronizarAgora() {
+    if (!API || !S.chave || !S.evPend.size) { atualizarFaixaSync(); return; }
+    falhaEv = false;
     for (const id of [...S.evPend]) {
       try {
         if (!S.eventos[id]) { S.evPend.delete(id); continue; }
+        const enviado = S.eventos[id].atualizado_em;
         const r = await fetch(`${API}/dados/eventos/${encodeURIComponent(id)}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Chave': S.chave }, body: JSON.stringify(S.eventos[id]),
         });
-        if (r.status === 401) { toast('Chave de edição recusada. O evento ficou guardado só neste aparelho até você entrar de novo.'); break; }
+        if (r.status === 401) { falhaEv = true; toast('Chave de edição recusada. O evento ficou guardado só neste aparelho até você entrar de novo.'); break; }
         if (!r.ok) throw new Error(r.status);
-        S.evPend.delete(id);
-      } catch { /* tenta de novo depois */ }
+        // Se mudou de novo enquanto subia, continua pendente para a próxima rodada.
+        if (S.eventos[id] && S.eventos[id].atualizado_em === enviado) S.evPend.delete(id);
+      } catch { falhaEv = true; /* tenta de novo depois */ }
     }
     lsSet(LS.evPend, [...S.evPend]);
+    atualizarFaixaSync();
+  }
+  // Faixa na página do evento quando o que está na tela ainda não chegou à nuvem (e ao convite).
+  function faixaSyncHtml(id) {
+    if (!API || !S.evPend.has(id)) return '';
+    if (eventosTrancados()) return `<div class="aviso-chave" role="status">${ic('nuvem')}
+      <p><strong>Alterações só neste aparelho.</strong> O convite e os outros aparelhos ainda mostram a versão antiga. Entre com a chave de edição para salvar na nuvem.</p>
+      <button type="button" class="btn primario" data-acao="abrir-config">Entrar com a chave</button></div>`;
+    if (falhaEv) return `<div class="aviso-chave" role="status">${ic('nuvem')}
+      <p><strong>Ainda não salvei na nuvem.</strong> O convite mostra a versão antiga até a conexão voltar.</p>
+      <button type="button" class="btn" data-acao="sinc-eventos">Tentar agora</button></div>`;
+    return '';
+  }
+  function atualizarFaixaSync() {
+    const f = $('#pg-sync');
+    if (f && S.paginaEv) f.innerHTML = faixaSyncHtml(S.paginaEv);
+  }
+  // "Ver convite": sobe o que falta antes de abrir, senão o convite mostra a versão antiga.
+  async function verConvite(a) {
+    if (eventosTrancados()) {
+      toast('O convite mostra só o que está salvo na nuvem. Entre com a chave para salvar suas alterações.');
+      abrirConfig();
+      return;
+    }
+    const w = window.open('about:blank', '_blank');
+    if (w) { try { w.opener = null; } catch { /* sem acesso */ } }
+    await sincronizarEventos();
+    if (S.evPend.has(S.paginaEv)) toast('Não consegui salvar na nuvem agora; o convite pode estar com a versão antiga.');
+    if (w) w.location.href = a.href; else location.href = a.href;
   }
   async function carregarEventos() {
     if (!API) return;
@@ -2576,7 +2622,7 @@
       <div class="conv-share">
         <div><strong>${esc(cv.titulo || ev.nome)}</strong><small>${prazoStatus(ev)}</small></div>
         <div class="acoes-linha">
-          <a class="btn ouro" href="${esc(linkConvite(ev))}" target="_blank" rel="noopener">${ic('olho')}Ver convite</a>
+          <a class="btn ouro" href="${esc(linkConvite(ev))}" target="_blank" rel="noopener" data-ver-convite>${ic('olho')}Ver convite</a>
           <a class="btn zap" href="${esc(zapConvite(ev, null))}" target="_blank" rel="noopener">${ic('zap')}Enviar no WhatsApp</a>
           <button type="button" class="btn" data-acao="conv-copiar">Copiar link geral</button></div>
       </div>
@@ -3527,12 +3573,13 @@
           </div>
           <div class="ev-cab-dir">${conta}
             <div class="ev-acoes">
-              <a class="btn ouro" href="${esc(linkConvite(ev))}" target="_blank" rel="noopener">${ic('olho')}Ver convite</a>
+              <a class="btn ouro" href="${esc(linkConvite(ev))}" target="_blank" rel="noopener" data-ver-convite>${ic('olho')}Ver convite</a>
               <button type="button" class="btn" data-acao="editar-evento">${ic('editar')}Editar</button>
               <button type="button" class="btn icone-so" data-acao="imprimir" title="Imprimir" aria-label="Imprimir">${ic('imprimir')}</button>
             </div></div>
         </div>
       </header>
+      <div id="pg-sync">${faixaSyncHtml(ev.id)}</div>
       <div class="kpis" id="pg-kpis">${kpisHtml(ev, c)}</div>
       <nav class="ev-abas" role="tablist" aria-label="Partes do evento">${ABAS_EV.map(([k, r]) => `<button type="button" role="tab" data-ev-aba="${k}" aria-selected="${k === aba}">${r}<span class="aba-n" data-aba-n="${k}">${contadorAba(ev, k)}</span></button>`).join('')}</nav>
       ${painel('geral', `<div class="ev-grade">
