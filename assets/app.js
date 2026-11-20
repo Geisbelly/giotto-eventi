@@ -2633,7 +2633,7 @@
         ${cv.modelo === 'html' ? `<div class="modelo-html">
           <p class="ajuda">Cole aqui o HTML do convite com o seu design. Onde quiser os dados do evento, escreva os campos entre chaves duplas:
             <code>{{titulo}}</code> <code>{{ola}}</code> <code>{{data}}</code> <code>{{dia}}</code> <code>{{mes}}</code> <code>{{horario}}</code> <code>{{local}}</code> <code>{{endereco}}</code> <code>{{tema}}</code> <code>{{mensagem}}</code> <code>{{prazo}}</code> <code>{{faltam}}</code>.
-            E coloque os blocos prontos onde eles devem aparecer: <code>{{confirmacao}}</code> (confirmação de presença), <code>{{mapa}}</code>, <code>{{agenda}}</code>, <code>{{presentes}}</code> e <code>{{avisos}}</code> (botão da página de avisos).
+            E coloque os blocos prontos onde eles devem aparecer: <code>{{confirmacao}}</code> (confirmação de presença), <code>{{mapa}}</code>, <code>{{agenda}}</code>, <code>{{presentes}}</code>, <code>{{avisos}}</code> (botão da página de avisos), <code>{{botao_confirmar}}</code> (botão que leva à confirmação) e <code>{{faltam}}</code> (contagem regressiva que se atualiza sozinha). Se o modelo não tiver o botão de confirmar nem o de avisos, eles entram logo depois da contagem; e uma barra fixa embaixo leva à confirmação.
             Os blocos usam a fonte e a cor do texto do seu HTML; as cores dos botões vêm das variáveis <code>--cor</code>, <code>--cor-escura</code>, <code>--cor-fundo</code> e <code>--linha</code> do seu CSS.
             Scripts não rodam no convite e imagens precisam ser links (https://…).</p>
           <div class="acoes-linha">

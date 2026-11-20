@@ -20,6 +20,8 @@ Sem login para ver o catálogo. Cadastrar, editar e gravar avaliações também 
 
 O convite tem uma página de **avisos e instruções** (`convite.avisos`, um por linha, e `convite.avisos_titulo`), aberta por um botão em destaque; no modelo próprio o botão vai onde estiver `{{avisos}}`. Tirar um convidado da lista também apaga a resposta dele.
 
+No convite, a contagem regressiva (`{{faltam}}`) mostra dias, horas e minutos até o começo da festa e se atualiza sozinha. Logo depois dela vem o botão **Confirmar presença** (`{{botao_confirmar}}` no modelo próprio; sem o campo, ele entra depois da contagem) e, enquanto a confirmação não aparece na tela, uma barra fixa embaixo leva até ela. Depois que a pessoa responde, o botão vira **Ver minha resposta** e a barra some.
+
 Os eventos têm contatos, lista de convidados, idades, orçamento e gastos, por isso a API só entrega e grava eventos e a lista de respostas para quem manda a chave. Sem a chave, o site some com a cópia que o navegador tenha guardado. O convite usa `GET /convite/:evento`, que devolve só o que o convidado vê: título, data, horário, tema, quem organiza, os campos do convite, os presentes (com quais já foram reservados, sem dizer por quem) e, quando o link traz `c=`, o nome e os lugares daquele convidado. O convidado grava a própria resposta sem chave, mas só para um evento que existe, sem excluir e sem mudar de evento. Não existe modo de salvar só no aparelho; o navegador guarda apenas uma cópia para reenviar se a conexão cair.
 
 ## Onde ficam os dados

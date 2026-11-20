@@ -37,12 +37,13 @@
     .quando .lado { border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); padding: 8px 0; font-size: .85rem; text-transform: uppercase; letter-spacing: .1em; color: var(--suave); }
     .quando .dia { font-family: var(--titulo); font-size: 3rem; line-height: 1; color: var(--cor-escura); font-weight: 650; }
     .quando .mes { font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: var(--suave); }
-    .data-longa { margin: -10px 0 20px; color: var(--suave); font-size: .9rem; }
+    .data-longa { margin: -10px 0 0; color: var(--suave); font-size: .9rem; }
     .local { background: var(--cor-fundo); border-radius: 14px; padding: 14px 16px; margin: 0 0 20px; }
     .local strong { display: block; font-size: 1.02rem; }
     .local span { display: block; color: var(--suave); font-size: .9rem; }
     .local a { display: inline-block; margin-top: 8px; color: var(--cor-escura); font-weight: 600; font-size: .9rem; }
-    .mensagem { white-space: pre-line; margin: 0 0 8px; font-size: 1rem; }
+    .mensagem { white-space: pre-line; margin: 22px 0 0; font-size: 1.05rem; line-height: 1.6; }
+    .secao-avisos { margin: 22px 0 0; } .secao-avisos .btn-avisos { margin: 0; }
     .prazo { color: var(--suave); font-size: .88rem; margin: 14px 0 0; }
     .rsvp { border-top: 1px dashed var(--linha); padding: 26px 24px 28px; }
     .rsvp h2 { font-family: var(--titulo); font-weight: 650; font-size: 1.45rem; margin: 0 0 4px; text-align: center; }
@@ -100,8 +101,8 @@
     .falta strong { font-size: 1.15rem; }
     .agenda { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0 0; }
     .agenda a, .agenda button { border: 1px solid var(--linha); border-radius: 999px; padding: 8px 14px; font: 600 .88rem var(--texto); color: var(--cor-escura); background: none; text-decoration: none; cursor: pointer; }
-    .presentes { margin: 22px 0 0; padding: 16px 0 0; border-top: 1px dashed var(--linha); }
-    .presentes h2 { font-size: 1.15rem; margin: 0 0 6px; }
+    .presentes { margin: 30px 0 0; padding: 26px 0 0; border-top: 1px dashed var(--linha); }
+    .presentes h2 { font-family: var(--titulo); font-weight: 650; font-size: 1.25rem; margin: 0 0 12px; }
     .presentes p { margin: 0 0 8px; }
     .presentes ul { list-style: none; padding: 0; margin: 0 auto 6px; max-width: 360px; text-align: left; }
     .presentes li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--linha); }
@@ -116,6 +117,36 @@
     .presentes ul.dica li::before { content: ''; flex: none; width: 8px; height: 8px; margin-top: .5em; border-radius: 50%; background: var(--cor); }
     @media print { .agenda { display: none; } }
     .imprimir-rsvp { display: none; text-align: center; padding: 0 24px 24px; color: var(--suave); font-size: .9rem; }
+    /* Contagem regressiva ao vivo */
+    .contagem { margin: 18px auto 4px; text-align: center; }
+    .contagem[hidden] { display: none; }
+    .contagem .ct-tit { margin: 0 0 8px; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--suave); font-weight: 600; }
+    .contagem .ct-caixas { display: flex; justify-content: center; gap: 8px; }
+    .contagem .cx { min-width: 70px; padding: 10px 6px 8px; border-radius: 14px; background: var(--cor-fundo); color: var(--cor-escura); }
+    .contagem .cx b { display: block; font-family: var(--titulo); font-size: 1.85rem; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .contagem .cx small { display: block; margin-top: 5px; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--suave); }
+    .contagem .ct-hoje { display: inline-block; padding: 10px 18px; border-radius: 999px; background: var(--cor-fundo); color: var(--cor-escura); font-weight: 700; text-transform: none; letter-spacing: 0; }
+    /* Botão de confirmar logo no começo */
+    .cta { margin: 22px 0 6px; text-align: center; }
+    .btn-confirmar { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; padding: 12px 18px; border-radius: 14px; background: var(--cor); color: #fff; font: 700 1.05rem var(--texto); text-decoration: none; letter-spacing: 0; text-transform: none; box-shadow: 0 8px 20px -10px var(--cor); }
+    .btn-confirmar.feito-ja { background: var(--cor-fundo); color: var(--cor-escura); box-shadow: none; border: 1.5px solid var(--cor); }
+    .cta .cta-nota { margin: 8px 0 0; font-size: .86rem; color: var(--suave); text-transform: none; letter-spacing: 0; }
+    /* Seções do convite padrão */
+    .secao { margin: 30px 0 0; padding: 26px 0 0; border-top: 1px dashed var(--linha); }
+    .secao > h2 { font-family: var(--titulo); font-weight: 650; font-size: 1.25rem; margin: 0 0 12px; }
+    .secao .local { margin-bottom: 0; }
+    @media (max-width: 420px) { .wrap { padding: 16px 12px 40px; } .conteudo { padding: 30px 20px 26px; } .rsvp { padding: 24px 20px 26px; } }
+    @media print { .cta, .contagem { display: none; } }
+  </style>
+  <style id="fixo-css">
+    /* Barra fixa de confirmação: fica fora do modelo para valer em qualquer aparência */
+    .barra-rsvp { position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(255, 253, 249, .97); border-top: 1px solid var(--linha, #e6ddd0); box-shadow: 0 -8px 24px -12px rgba(40, 30, 15, .25); transform: translateY(110%); transition: transform .3s ease; }
+    .barra-rsvp.on { transform: none; }
+    .barra-rsvp a { display: flex; align-items: center; justify-content: center; max-width: 520px; min-height: 50px; margin: 0 auto; border-radius: 14px; background: var(--cor, #b4781f); color: #fff; font: 700 1.02rem/1.2 system-ui, sans-serif; text-decoration: none; }
+    .barra-rsvp small { display: block; text-align: center; margin-top: 4px; font: 500 .78rem system-ui, sans-serif; color: var(--suave, #6f665b); }
+    body.com-barra { padding-bottom: 96px; }
+    @media (prefers-reduced-motion: reduce) { .barra-rsvp { transition: none; } }
+    @media print { .barra-rsvp { display: none; } body.com-barra { padding-bottom: 0; } }
   </style>
 </head>
 <body>
@@ -292,7 +323,7 @@
         + base.replace(/:root\s*\{[^}]*\}/, '').replace(/body\[data-estilo[^}]*\}/g, '')
           .replace(/var\((--[a-z-]+)\)/g, (m, k) => (pad[k] ? `var(${k}, ${pad[k]})` : m))
         // No modelo próprio, quem desenha divisórias e margens é o modelo.
-        + '\n.rsvp { border-top: 0; padding: 8px 0 0; } .presentes { border-top: 0; }';
+        + '\n.rsvp { border-top: 0; padding: 8px 0 0; } .presentes { border-top: 0; margin-top: 28px; } .agenda { margin-top: 22px; } .rota { margin-top: 18px; } .btn-avisos { margin: 18px 0 8px; } .contagem { margin: 14px auto 0; }';
       return CSS_BLOCO;
     }
     // Some com a linha cujos campos ficaram todos vazios ("Confirme até {{prazo}}" sem prazo) e com o que ficar oco.
@@ -325,10 +356,12 @@
     }
     function renderProprio(ev, vals, x) {
       let html = String(ev.convite.modelo_html);
-      const blocos = { confirmacao: 'rsvp', mapa: 'mapa', agenda: 'agenda', presentes: 'presentes', avisos: 'avisos' };
+      const blocos = { confirmacao: 'rsvp', mapa: 'mapa', agenda: 'agenda', presentes: 'presentes', avisos: 'avisos', botao_confirmar: 'cta' };
       html = html.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, k) => {
         k = k.toLowerCase();
         if (blocos[k]) return `<div data-convite="${blocos[k]}"></div>`;
+        // A contagem pode estar dentro de um <p>: vai num <span> para o navegador não quebrar o parágrafo.
+        if (k === 'faltam' || k === 'contagem') return vals.faltam ? '<span data-convite="contagem"></span>' : '\uE000';
         if (!(k in vals)) return m;
         // Marcadores invisíveis: \uE000 = campo vazio, \uE001 = campo preenchido. Saem antes de mostrar.
         return String(vals[k]).trim() ? '\uE001' + esc(vals[k]) : '\uE000';
@@ -337,9 +370,18 @@
       limparModelo(doc);
       tirarVazios(doc);
       if (!doc.querySelector('[data-convite="rsvp"]')) { const r = doc.createElement('div'); r.dataset.convite = 'rsvp'; doc.body.appendChild(r); }
+      // Sem lugar marcado no modelo, o botão de confirmar e os avisos entram logo depois da contagem (ou do título).
+      const depois = (el, novo) => el.parentNode.insertBefore(novo, el.nextSibling);
+      const bloco = (k) => { const d = doc.createElement('div'); d.dataset.convite = k; return d; };
+      const ancora = () => { const c = doc.querySelector('[data-convite="contagem"]'); return (c && (c.closest('p,div:not([data-convite])') || c)) || doc.querySelector('h1'); };
+      let ultimo = ancora();
+      if (!doc.querySelector('[data-convite="cta"]') && x.ctaOk) {
+        const c = bloco('cta');
+        if (ultimo && ultimo.parentNode) { depois(ultimo, c); ultimo = c; } else { const r = doc.querySelector('[data-convite="rsvp"]'); r.parentNode.insertBefore(c, r); }
+      }
       if (!doc.querySelector('[data-convite="avisos"]') && avisosDe(ev.convite).length) {
-        const a = doc.createElement('div'); a.dataset.convite = 'avisos';
-        const r = doc.querySelector('[data-convite="rsvp"]'); r.parentNode.insertBefore(a, r);
+        const a = bloco('avisos');
+        if (ultimo && ultimo.parentNode) depois(ultimo, a); else { const r = doc.querySelector('[data-convite="rsvp"]'); r.parentNode.insertBefore(a, r); }
       }
       cssDosBlocos();
       document.getElementById('base-css').remove();
@@ -353,6 +395,8 @@
         agenda: () => agendaHtml(ev, vals.titulo, x.ondeTxt),
         presentes: () => `<div id="presentes">${presentesHtml(ev, (lsGet() || {}).id)}</div>`,
         avisos: () => avisosBotao(ev.convite),
+        cta: () => ctaHtml(x.prazoTxt, !x.ctaOk),
+        contagem: () => contagemHtml(),
       };
       document.querySelectorAll('[data-convite]').forEach((el) => {
         const f = conteudo[el.dataset.convite];
@@ -363,6 +407,97 @@
       });
     }
     function erro(msg) { app.innerHTML = `<p class="erro-total">${esc(msg)}</p>`; }
+
+    // Contagem regressiva: conta até o começo da festa e se atualiza sozinha (não fica parada no número do dia em que abriu).
+    let ALVO = null;
+    function alvoFesta(ev) {
+      if (!ev.data) return null;
+      const d = dataLocal(ev.data);
+      const [h, m] = String(ev.hora_inicio || '').split(':').map(Number);
+      if (isFinite(h)) d.setHours(h, isFinite(m) ? m : 0, 0, 0);
+      return { quando: d, temHora: isFinite(h) };
+    }
+    const contagemHtml = () => '<div class="contagem" data-contagem role="timer" aria-live="off"></div>';
+    const todos = (sel) => RAIZES.flatMap((r) => [...r.querySelectorAll(sel)]);
+    function pintarContagem() {
+      const els = todos('[data-contagem]');
+      if (!els.length || !ALVO) return;
+      const agora = new Date();
+      const hoje = new Date(agora); hoje.setHours(0, 0, 0, 0);
+      const dia = new Date(ALVO.quando); dia.setHours(0, 0, 0, 0);
+      const ms = ALVO.quando - agora;
+      let html = '';
+      if (dia < hoje) html = '';
+      else if (dia.getTime() === hoje.getTime()) {
+        html = ms > 0 && ALVO.temHora
+          ? `<p class="ct-tit">É hoje!</p><div class="ct-caixas">${caixa(Math.floor(ms / 36e5), 'horas', 'hora')}${caixa(Math.floor(ms / 6e4) % 60, 'min', 'min')}</div>`
+          : '<span class="ct-hoje">É hoje! A festa já está acontecendo.</span>';
+      } else {
+        const dias = Math.floor(ms / 864e5);
+        html = `<p class="ct-tit">Faltam</p><div class="ct-caixas">${caixa(Math.max(0, dias), 'dias', 'dia')}${caixa(Math.floor(ms / 36e5) % 24, 'horas', 'hora')}${caixa(Math.floor(ms / 6e4) % 60, 'min', 'min')}</div>`;
+      }
+      els.forEach((el) => { if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; el.hidden = !html; } });
+    }
+    const caixa = (n, varios, um) => `<span class="cx"><b>${n}</b><small>${n === 1 ? um : varios}</small></span>`;
+    function ligarContagem(ev) {
+      ALVO = alvoFesta(ev);
+      pintarContagem();
+      setInterval(pintarContagem, 15000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) pintarContagem(); });
+    }
+
+    // Botão "Confirmar presença" no começo do convite e barra fixa embaixo enquanto a confirmação não aparece na tela.
+    const respondeu = () => { const r = lsGet(); return !!(r && r.enviado); };
+    function ctaHtml(prazoTxt, encerrado) {
+      if (encerrado) return '';
+      return `<div class="cta"><a class="btn-confirmar" href="#rsvp" data-ir-rsvp>Confirmar presença</a>
+        ${prazoTxt ? `<p class="cta-nota">Responda até ${esc(prazoTxt)}. Leva menos de 1 minuto.</p>` : '<p class="cta-nota">Leva menos de 1 minuto.</p>'}</div>`;
+    }
+    function irRsvp(e) {
+      e.preventDefault();
+      const alvo = $id('rsvp');
+      const host = alvo && alvo.getRootNode() !== document ? alvo.getRootNode().host : alvo;
+      if (!host) return;
+      host.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      setTimeout(() => { const b = todos('[data-resp]')[0] || todos('#mudar')[0]; if (b) b.focus({ preventScroll: true }); }, 500);
+    }
+    function atualizarCta() {
+      const ja = respondeu();
+      todos('[data-ir-rsvp]').forEach((a) => {
+        a.onclick = irRsvp;
+        if (a.closest('.barra-rsvp')) return;
+        a.textContent = ja ? 'Ver minha resposta' : 'Confirmar presença';
+        a.classList.toggle('feito-ja', ja);
+      });
+      todos('.cta-nota').forEach((p) => { p.hidden = ja; });
+      mostrarBarra();
+    }
+    let visRsvp = false, visCta = true, barra = null;
+    function mostrarBarra() {
+      if (!barra) return;
+      const on = !respondeu() && !visRsvp && !visCta && window.scrollY > 200;
+      barra.classList.toggle('on', on);
+      barra.setAttribute('aria-hidden', String(!on));
+      barra.querySelector('a').tabIndex = on ? 0 : -1;
+    }
+    function ligarBarra(encerrado, prazoTxt) {
+      if (encerrado || !$id('rsvp')) return;
+      barra = document.createElement('div');
+      barra.className = 'barra-rsvp';
+      barra.innerHTML = `<a href="#rsvp" data-ir-rsvp>Confirmar presença</a>${prazoTxt ? `<small>Responda até ${esc(prazoTxt)}</small>` : ''}`;
+      document.body.appendChild(barra);
+      document.body.classList.add('com-barra');
+      const host = (el) => (el.getRootNode() !== document ? el.getRootNode().host : el);
+      if ('IntersectionObserver' in window) {
+        const rs = $id('rsvp');
+        new IntersectionObserver(([en]) => { visRsvp = en.isIntersecting; mostrarBarra(); }).observe(host(rs));
+        const cta = todos('.cta [data-ir-rsvp]')[0];
+        if (cta) new IntersectionObserver(([en]) => { visCta = en.isIntersecting; mostrarBarra(); }).observe(host(cta));
+        else visCta = false;
+      } else visCta = false;
+      window.addEventListener('scroll', mostrarBarra, { passive: true });
+      atualizarCta();
+    }
 
     // Avisos e instruções: um por linha no evento; viram uma página própria do convite (#avisos).
     const avisosDe = (cv) => String((cv && cv.avisos) || '').split('\n').map((x) => x.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
@@ -465,6 +600,7 @@
       const encerrado = !!(fim && new Date() >= fim && !cv.aceitar_apos_prazo);
       const ondeTxt = [local, endereco].filter(Boolean).join(', ');
       const faltaN = d ? (() => { const h = new Date(); h.setHours(0, 0, 0, 0); return Math.round((d - h) / 864e5); })() : null;
+      const prazoTxt = prazo ? `${prazo.getDate()} de ${MESES[prazo.getMonth()]}` : '';
 
       if (cv.modelo === 'html' && String(cv.modelo_html || '').trim()) {
         renderProprio(ev, {
@@ -475,7 +611,7 @@
           prazo: prazo ? `${prazo.getDate()} de ${MESES[prazo.getMonth()]}` : '',
           faltam: faltaN == null ? '' : faltaN > 1 ? `Faltam ${faltaN} dias` : faltaN === 1 ? 'É amanhã!' : faltaN === 0 ? 'É hoje!' : '',
           lugares: lugares ? `Este convite vale para até ${lugares} ${lugares === 1 ? 'pessoa' : 'pessoas'}.` : '',
-        }, { cv, dest, rota, ondeTxt });
+        }, { cv, dest, rota, ondeTxt, prazoTxt, ctaOk: !encerrado });
       } else {
       app.innerHTML = `
         <article class="cartao">
@@ -489,16 +625,17 @@
             ${d ? `<div class="quando"><span class="lado">${esc(SEMANA[d.getDay()].split('-')[0])}</span>
                 <span><span class="dia">${d.getDate()}</span><br><span class="mes">${esc(MESES[d.getMonth()])}</span></span>
                 <span class="lado">${esc(horario || d.getFullYear())}</span></div>
-              ${(() => { const h = new Date(); h.setHours(0, 0, 0, 0); const n = Math.round((d - h) / 864e5); return n > 1 ? `<p class="falta">Faltam <strong>${n}</strong> dias</p>` : n === 1 ? '<p class="falta"><strong>É amanhã!</strong></p>' : n === 0 ? '<p class="falta"><strong>É hoje!</strong></p>' : ''; })()}
-              <p class="data-longa">${esc(`${SEMANA[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`)}${horario ? ` · ${esc(horario)}` : ''}</p>` : ''}
-            ${avisosBotao(cv)}
-            ${local || endereco || dest ? `<div class="local">${local ? `<strong>${esc(local)}</strong>` : ''}${endereco ? `<span>${esc(endereco)}</span>` : ''}
-              ${!dest && mapa ? `<a href="${esc(mapa)}" target="_blank" rel="noopener">Como chegar</a>` : ''}</div>` : ''}
-            ${dest ? rotaHtml(cv, dest, rota) : ''}
+              <p class="data-longa">${esc(`${SEMANA[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`)}${horario ? ` · ${esc(horario)}` : ''}</p>
+              ${contagemHtml()}` : ''}
             ${cv.mensagem ? `<p class="mensagem">${esc(cv.mensagem)}</p>` : ''}
+            ${ctaHtml(prazoTxt, encerrado)}
             ${lugares ? `<p class="prazo">Este convite vale para até ${lugares} ${lugares === 1 ? 'pessoa' : 'pessoas'}.</p>` : ''}
-            ${prazo ? `<p class="prazo">Por favor, confirme até ${prazo.getDate()} de ${MESES[prazo.getMonth()]}.</p>` : ''}
-            ${agendaHtml(ev, titulo, [local, endereco].filter(Boolean).join(', '))}
+            ${avisosBotao(cv) ? `<div class="secao-avisos">${avisosBotao(cv)}</div>` : ''}
+            ${local || endereco || dest ? `<section class="secao"><h2>Onde</h2>
+              <div class="local">${local ? `<strong>${esc(local)}</strong>` : ''}${endereco ? `<span>${esc(endereco)}</span>` : ''}
+              ${!dest && mapa ? `<a href="${esc(mapa)}" target="_blank" rel="noopener">Como chegar</a>` : ''}</div>
+              ${dest ? rotaHtml(cv, dest, rota) : ''}</section>` : ''}
+            ${agendaHtml(ev, titulo, '') ? `<section class="secao"><h2>Salve a data</h2>${agendaHtml(ev, titulo, [local, endereco].filter(Boolean).join(', '))}</section>` : ''}
             <div id="presentes">${presentesHtml(ev, (lsGet() || {}).id)}</div>
           </div>
           <section class="rsvp" id="rsvp" aria-labelledby="rsvp-tit"></section>
@@ -511,6 +648,9 @@
       if (ics) ics.onclick = () => baixarIcs(ev, titulo, [local, endereco].filter(Boolean).join(', '));
       paginaAvisos(ev, titulo, d ? `${d.getDate()} de ${MESES[d.getMonth()]}${horario ? `, ${horario}` : ''}` : '');
       formRsvp(ev, { convidado, nome, lugares, pedirIdade, pedirSexo, encerrado });
+      ligarContagem(ev);
+      ligarBarra(encerrado, prazoTxt);
+      atualizarCta();
     }
 
     function formRsvp(ev, ctx) {
@@ -671,7 +811,8 @@
         <p class="sub">${talvez ? `Anotado, ${esc(reg.nome)}: talvez ${esc(partes)}. Se puder, confirme depois por este mesmo link.` : vai ? `${esc(reg.nome)}: ${esc(partes)}${idades.length ? ` (${esc(idades.join(', '))})` : ''}. Até lá!` : `Obrigado por avisar, ${esc(reg.nome)}. Vamos sentir sua falta.`}</p>
         ${ctx.encerrado ? '' : '<button type="button" class="link-btn" id="mudar">Mudar minha resposta</button>'}</div>`;
       if (ctx.encerrado) return;
-      $id('mudar').onclick = () => { lsSet({ ...reg, enviado: false }); formRsvp(ev, ctx); };
+      $id('mudar').onclick = () => { lsSet({ ...reg, enviado: false }); formRsvp(ev, ctx); atualizarCta(); };
+      atualizarCta();
     }
 
     iniciar();
